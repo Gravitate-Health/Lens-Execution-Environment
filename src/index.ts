@@ -15,35 +15,10 @@
 
 // Export types
 export {
-  IPS,
-  PreprocessedEPI,
-  Lens,
-  LensExecutionResult,
-  ExecutionOptions,
   FocusingError,
   ApplyLensesResult,
-  FHIRBundle,
-  FHIRResource,
-  FHIRBundleEntry,
-  FHIRReference,
-  FHIRCoding,
-  FHIRCodeableConcept,
-  FHIRIdentifier,
-  FHIRNarrative,
-  FHIRSection,
-  LensContent,
   LensExecutionObject,
 } from './types';
 
-// Export executor functions
-export {
-  executeLens,
-  executeLenses,
-  getProcessedHtml,
-  applyLenses,
-  getLensIdentifier,
-  extractLensCode,
-  findResourceByType,
-  getLeafletHTMLString,
-  getLeaflet,
-} from './executor';
+// Export main lens execution function
+export { applyLenses } from './executor';

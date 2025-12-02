@@ -33,8 +33,6 @@ npm install @gravitate-health/lens-execution-environment
 ```typescript
 import {
   applyLenses,
-  executeLenses,
-  getProcessedHtml,
   Lens,
   PreprocessedEPI,
   IPS
@@ -110,35 +108,35 @@ const lens: Lens = {
 
 // Apply lenses and get enhanced ePI
 const result = await applyLenses(epi, ips, [lens]);
-console.log(result.epi); // Enhanced ePI
-console.log(result.focusingErrors); // Any errors that occurred
-
-// Or get just the final HTML
-const processedHtml = await getProcessedHtml([lens], epi, ips);
-```
-
+// Apply lenses and get enhanced ePI
+const result = await applyLenses(epi, ips, [lens]);
+console.log(result.epi); // Enhanced ePI Bundle with modified sections
+console.log(result.focusingErrors); // Any errors that occurred during lens execution
 ### CommonJS
 
 ```javascript
 const { applyLenses, getProcessedHtml } = require('@gravitate-health/lens-execution-environment');
 
-// Same usage as above (with await inside async function)
-```
+### CommonJS
 
+```javascript
+const { applyLenses } = require('@gravitate-health/lens-execution-environment');
+
+// Same usage as above (with await inside async function)
 ### Browser / Webview
 
 The ESM build can be imported directly in modern browsers:
 
 ```html
 <script type="module">
-  import { applyLenses, getProcessedHtml } from './node_modules/@gravitate-health/lens-execution-environment/dist/esm/index.js';
+  import { applyLenses } from './node_modules/@gravitate-health/lens-execution-environment/dist/esm/index.js';
   
   // Use the library (async functions)
+  const result = await applyLenses(epi, ips, [lens]);
 </script>
 ```
 
-## API
-
+**Note:** For HTML parsing in browser environments, the library uses the native `DOMParser` API. In Node.js environments, it will attempt to use `jsdom` if available (installed as an optional dependency). If jsdom is not available, HTML parsing will fall back gracefully, returning the original sections unchanged.
 ### Types
 
 - **`IPS`**: International Patient Summary as a FHIR Bundle
@@ -151,18 +149,7 @@ The ESM build can be imported directly in modern browsers:
 
 ### Functions
 
-- **`applyLenses(epi, ips, lenses, options?)`**: Apply lenses and return enhanced ePI
-- **`executeLens(lens, epi, ips, htmlContent, options?)`**: Execute a single lens
-- **`executeLenses(lenses, epi, ips, options?)`**: Execute multiple lenses sequentially
-- **`getProcessedHtml(lenses, epi, ips, options?)`**: Get the final HTML after applying all lenses
-
-### Helper Functions
-
-- **`getLensIdentifier(lens)`**: Extract lens identifier from a Lens resource
-- **`extractLensCode(lens)`**: Decode base64 lens code from a Lens resource
-- **`findResourceByType(resource, resourceType)`**: Find a resource by type in a Bundle
-- **`getLeaflet(epi)`**: Extract leaflet sections from an ePI
-- **`getLeafletHTMLString(sections)`**: Get HTML string from leaflet sections
+- **`applyLenses(epi, ips, lenses, options?)`**: Apply all lenses sequentially and return the enhanced ePI Bundle with modified content and focusing errors
 
 ### Lens Function Interface
 
@@ -218,10 +205,9 @@ npm run lint
 
 ```
 src/
-├── index.ts         # Main entry point and exports
-├── types.ts         # FHIR-compliant TypeScript interfaces
-├── executor.ts      # Lens execution logic
-└── executor.test.ts # Unit tests (26 tests)
+├── index.ts                     # Main entry point and exports
+├── types.ts                     # FHIR-compliant TypeScript interfaces
+└── LensExecutionEnvironment.ts  # Core lens execution logic
 ```
 
 ## Publishing
