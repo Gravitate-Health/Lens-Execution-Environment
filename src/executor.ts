@@ -16,24 +16,24 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
     // Get leaflet sectoins from ePI
     let leafletSectionList = getLeaflet(epi)
     // have all errors collected
-    let focusingErrors = []
+    const focusingErrors = []
     // Iterate lenses
-    for (let i in completeLenses) {
-        let lens = completeLenses[i]
+    for (const i in completeLenses) {
+        const lens = completeLenses[i]
 
         // If there are lenses, we can already mark the ePI as enhanced
         epi = setCategoryCode(epi, "E", "Enhanced")
         
-        let lensIdentifier = getLensIdenfier(completeLenses[i])
-        let epiLanguage = getlanguage(epi)
-        let patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
+        const lensIdentifier = getLensIdenfier(completeLenses[i])
+        const epiLanguage = getlanguage(epi)
+        const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
-        let lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips)
+        const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips)
         focusingErrors.push(lensApplication.focusingErrors)
-        let lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
+        const lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
         if (lensApplied) {
             leafletSectionList = lensApplication.leafletSectionList
-            let explanationText = lensApplication.explanation || await createExplanation(patientIdentifier, epiLanguage, lensIdentifier)
+            const explanationText = lensApplication.explanation || await createExplanation(patientIdentifier, epiLanguage, lensIdentifier)
             let epiExtensions = []
             if (explanationText != undefined && explanationText != "") {
                 epiExtensions = getExtensions(epi)
@@ -70,7 +70,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
 }
 
 const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any) => {
-    let lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
+    const lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
     let lensCode = "" 
     try {
         const lensBase64data = lens.content[0].data
@@ -83,7 +83,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
                 explanation: ""
             }
     }
-    let focusingErrors: { message: string; lensName: string; }[] = []
+    const focusingErrors: { message: string; lensName: string; }[] = []
     try {
         // Iterate on leaflet sections
         // I want to only execute the lens all sections at a time, so I will not use a forEach
@@ -119,15 +119,15 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             }
         }
 
-        let leafletHTMLString = getLeafletHTMLString(leafletSectionList)
+        const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
 
         // Create enhance function from lens
-        let lensFunction = new Function("epi, ips, pv, html", lensCode)
-        let resObject = lensFunction(epi, ips, {}, leafletHTMLString)
+        const lensFunction = new Function("epi, ips, pv, html", lensCode)
+        const resObject = lensFunction(epi, ips, {}, leafletHTMLString)
         try {
             // Execute lens and save result on ePI leaflet section
-            let enhancedHtml = await resObject.enhance()
+            const enhancedHtml = await resObject.enhance()
             // If the lens has an explanation function, execute it
             if (resObject.explanation == undefined || resObject.explanation == null || typeof resObject.explanation !== 'function') {
                 Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
@@ -174,10 +174,10 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
     }
 }
 
-let getLeafletHTMLString = (leafletSectionList: any[]) => {
+const getLeafletHTMLString = (leafletSectionList: any[]) => {
     let htmlString = "";
-    for (let i in leafletSectionList) {
-        let section = leafletSectionList[i];
+    for (const i in leafletSectionList) {
+        const section = leafletSectionList[i];
         if (section['text'] && section['text']['div']) {
             htmlString += section['text']['div'];
         }
@@ -185,8 +185,8 @@ let getLeafletHTMLString = (leafletSectionList: any[]) => {
             htmlString += getLeafletHTMLString(section['section']);
         }
         if (section['entry']) {
-            for (let j in section['entry']) {
-                let entry = section['entry'][j];
+            for (const j in section['entry']) {
+                const entry = section['entry'][j];
                 if (entry['resource'] && entry['resource']['text'] && entry['resource']['text']['div']) {
                     htmlString += entry['resource']['text']['div'];
                 }
@@ -200,15 +200,15 @@ let getLeafletHTMLString = (leafletSectionList: any[]) => {
     return htmlString;
 }
 
-let getLeafletSectionListFromHTMLString = (html: string, leafletSectionList: any[]) => {
+const getLeafletSectionListFromHTMLString = (html: string, leafletSectionList: any[]) => {
     // Parse HTML and extract leaflet sections, which are divs with a xmlns="http://www.w3.org/1999/xhtml" attribute, and add them to the leafletSectionList
     const dom = new JSDOM.JSDOM(html);
     const document = dom.window.document;
     const divs = document.querySelectorAll('div[xmlns="http://www.w3.org/1999/xhtml"]');
-    let newLeafletSectionList: any[] = [];
+    const newLeafletSectionList: any[] = [];
 
     for (let i = 0; i < divs.length; i++) {
-        let div = divs[i];
+        const div = divs[i];
         let sectionTitle = leafletSectionList[i]?.title;
         let sectionCode = leafletSectionList[i]?.code;
         if (div == undefined) {
@@ -228,7 +228,7 @@ let getLeafletSectionListFromHTMLString = (html: string, leafletSectionList: any
             };
         }
 
-        let sectionObject: any = {
+        const sectionObject: any = {
             title: sectionTitle,
             code: sectionCode,
             text: {
@@ -266,7 +266,7 @@ const findResourceByType = (resource: any, resourceType: string): any => {
 }
 
 const getLensIdenfier = (lens: any) => {
-    let lensIdentifier = lens["identifier"][0]["value"]
+    const lensIdentifier = lens["identifier"][0]["value"]
     return lensIdentifier
 }
 

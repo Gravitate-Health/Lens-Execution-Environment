@@ -8,7 +8,7 @@ export class ConditionsProvider {
     }
 
     async getConditionsByPatientIdentifier(patientIdentifier: string) {
-        let baseUrl = `${this.baseUrl}/Condition?patient.identifier=${patientIdentifier}`;
+        const baseUrl = `${this.baseUrl}/Condition?patient.identifier=${patientIdentifier}`;
         let conditionsSearchSet;
         try {
             Logger.logInfo('ConditionsProvider.ts', 'getConditionsByPatientIdentifier', 'Getting conditions by patient identifier');
@@ -19,7 +19,7 @@ export class ConditionsProvider {
         } catch (error) {
             return undefined
         }
-        let conditionsDisplay = [];
+        const conditionsDisplay = [];
         console.log(conditionsSearchSet);
 
         if (conditionsSearchSet.entry === undefined) {
@@ -35,7 +35,7 @@ export class ConditionsProvider {
             return undefined;
         }
 
-        for (let condition of conditionsSearchSet.entry) {
+        for (const condition of conditionsSearchSet.entry) {
             if (condition.resource.code.coding[0].display === undefined) {
                 continue;
             }

@@ -19,7 +19,7 @@ export class AllergiesProvider {
         } catch (error) {
             return undefined
         }
-        let allergiesDisplay = [];
+        const allergiesDisplay = [];
 
         if (allergiesSearchSet.entry === undefined) {
             return undefined;
@@ -34,7 +34,7 @@ export class AllergiesProvider {
             return undefined;
         }
 
-        for (let allergy of allergiesSearchSet.entry) {
+        for (const allergy of allergiesSearchSet.entry) {
             Logger.logInfo('AllergiesProvider.ts', 'getAllergiesByPatientIdentifier', `Allergy: ${allergy.resource.code.coding[0].display}`);
             allergiesDisplay.push({
                 "type": allergy.resource.type ? allergy.resource.type : "allergy",
