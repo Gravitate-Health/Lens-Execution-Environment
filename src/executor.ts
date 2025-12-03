@@ -34,7 +34,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
         
         const lensIdentifier = getLensIdenfier(completeLenses[i])
         const epiLanguage = getlanguage(epi)
-        const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
+        // const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
         const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips)
         focusingErrors.push(lensApplication.focusingErrors)
@@ -329,6 +329,7 @@ const getlanguage = (epi: any) => {
     return composition.language || null;
 }
 
+/*
 const getPatientIdentifierFromPatientSummary = (ips: any) => {
     const patient = findResourceByType(ips, "Patient");
     if (!patient) {
@@ -343,7 +344,7 @@ const getPatientIdentifierFromPatientSummary = (ips: any) => {
     
     return patient.identifier[0].value || null;
 }
-
+*/
 const getExtensions = (epi: any) => {
     const composition = findResourceByType(epi, "Composition");
     return composition.extension || [];
@@ -365,6 +366,15 @@ const writeLeaflet = (epi: any, leafletSectionList: any[]) => {
     if (!composition.section || !Array.isArray(composition.section)) {
         Logger.logError("lensesController.ts", "writeLeaflet", "Composition has no sections");
         return epi;
+    }
+    
+    // Find the main leaflet section and update it
+    const leafletSectionIndex = composition.section.findIndex((s: any) => s.section && Array.isArray(s.section));
+    if (leafletSectionIndex >= 0) {
+        composition.section[leafletSectionIndex].section = leafletSectionList;
+    } else if (composition.section.length > 0) {
+        // Fallback: update first section
+        composition.section[0].section = leafletSectionList;
     }
     
     return epi;
