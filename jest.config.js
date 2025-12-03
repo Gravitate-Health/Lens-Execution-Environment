@@ -10,4 +10,7 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(jsdom|parse5|entities|css-tree|@asamuzakjp|@csstools|cssstyle)/)',
+  ],
 };

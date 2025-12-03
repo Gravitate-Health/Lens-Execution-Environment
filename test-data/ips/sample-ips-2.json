@@ -1,0 +1,43 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-2",
+        "identifier": [
+          {
+            "system": "http://example.org/patient",
+            "value": "patient-456"
+          }
+        ],
+        "name": [
+          {
+            "family": "Johnson",
+            "given": ["Mary"]
+          }
+        ],
+        "birthDate": "1975-06-15"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-2",
+        "patient": {
+          "reference": "Patient/patient-2"
+        },
+        "code": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "38341003",
+              "display": "Hypertension"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

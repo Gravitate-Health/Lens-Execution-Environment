@@ -1,0 +1,27 @@
+{
+  "resourceType": "Library",
+  "id": "highlight-allergies-lens",
+  "identifier": [
+    {
+      "system": "http://example.org/lens",
+      "value": "highlight-allergies"
+    }
+  ],
+  "name": "HighlightAllergiesLens",
+  "title": "Highlight Allergies Lens",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
+        "code": "logic-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHJldHVybiBodG1sLnJlcGxhY2UoL3BlbmljaWxsaW4vZ2ksICc8bWFyaz4kJjwvbWFyaz4nKTsKICB9LAogIGV4cGxhbmF0aW9uOiBmdW5jdGlvbigpIHsKICAgIHJldHVybiAnSGlnaGxpZ2h0ZWQgYWxsZXJnZW5zIGJhc2VkIG9uIHBhdGllbnQgYWxsZXJnaWVzJzsKICB9Cn07"
+    }
+  ]
+}

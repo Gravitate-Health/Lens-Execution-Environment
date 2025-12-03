@@ -1,0 +1,82 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Composition",
+        "id": "composition-1",
+        "language": "en",
+        "identifier": {
+          "system": "http://example.org/epi",
+          "value": "sample-epi-1"
+        },
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11369-6",
+              "display": "History of Immunization Narrative"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "MedicinalProductDefinition/product-1"
+        },
+        "date": "2025-01-01T00:00:00Z",
+        "author": [
+          {
+            "reference": "Organization/org-1"
+          }
+        ],
+        "title": "Sample Medicine Package Leaflet",
+        "section": [
+          {
+            "title": "Leaflet",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://example.org",
+                  "code": "leaflet"
+                }
+              ]
+            },
+            "section": [
+              {
+                "title": "What is this medicine",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://example.org",
+                      "code": "what-is"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>This medicine contains <span class=\"ingredient\">penicillin</span> and is used to treat bacterial infections.</p><p>It may cause allergic reactions in some patients.</p></div>"
+                }
+              },
+              {
+                "title": "How to use this medicine",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://example.org",
+                      "code": "how-to-use"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Take one tablet twice daily with food.</p><p>Do not exceed the recommended dose.</p></div>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

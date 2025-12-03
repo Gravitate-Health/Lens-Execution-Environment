@@ -1,0 +1,82 @@
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Composition",
+        "id": "composition-2",
+        "language": "en",
+        "identifier": {
+          "system": "http://example.org/epi",
+          "value": "sample-epi-2"
+        },
+        "status": "final",
+        "type": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "11369-6",
+              "display": "History of Immunization Narrative"
+            }
+          ]
+        },
+        "subject": {
+          "reference": "MedicinalProductDefinition/product-2"
+        },
+        "date": "2025-01-01T00:00:00Z",
+        "author": [
+          {
+            "reference": "Organization/org-2"
+          }
+        ],
+        "title": "Another Medicine Package Leaflet",
+        "section": [
+          {
+            "title": "Leaflet",
+            "code": {
+              "coding": [
+                {
+                  "system": "http://example.org",
+                  "code": "leaflet"
+                }
+              ]
+            },
+            "section": [
+              {
+                "title": "What is this medicine",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://example.org",
+                      "code": "what-is"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>This medicine is used to treat <span class=\"condition\">diabetes</span>.</p><p>Common side effects include nausea and dizziness.</p></div>"
+                }
+              },
+              {
+                "title": "Warnings and precautions",
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://example.org",
+                      "code": "warnings"
+                    }
+                  ]
+                },
+                "text": {
+                  "status": "generated",
+                  "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>Do not use if you have kidney disease.</p><p>Consult your doctor about diabetes management.</p></div>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

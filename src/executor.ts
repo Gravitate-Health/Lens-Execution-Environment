@@ -1,6 +1,14 @@
 import { Logger } from "./Logger";
-import { createExplanation } from "./explanationController";
 import JSDOM from "jsdom";
+
+type Language = "en" | "es" | "pt" | "da";
+
+const defaultExplanation: { [key in Language]: string } = {
+    "en": "This section was highlighted because it is relevant to your health.",
+    "es": "Esta sección fue resaltada porque es relevante para su salud.",
+    "pt": "Esta seção foi destacada porque é relevante para a sua saúde.",
+    "da": "Denne sektion blev fremhævet, fordi den er relevant for din sundhed."
+};
 
 /*
     Applies the given lenses to the ePI's leaflet sections.
@@ -33,7 +41,8 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
         const lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
         if (lensApplied) {
             leafletSectionList = lensApplication.leafletSectionList
-            const explanationText = lensApplication.explanation || await createExplanation(patientIdentifier, epiLanguage, lensIdentifier)
+            const validLanguage = (epiLanguage as string) in defaultExplanation ? epiLanguage as Language : "en";
+            const explanationText = lensApplication.explanation || defaultExplanation[validLanguage];
             let epiExtensions = []
             if (explanationText != undefined && explanationText != "") {
                 epiExtensions = getExtensions(epi)
@@ -356,15 +365,6 @@ const writeLeaflet = (epi: any, leafletSectionList: any[]) => {
     if (!composition.section || !Array.isArray(composition.section)) {
         Logger.logError("lensesController.ts", "writeLeaflet", "Composition has no sections");
         return epi;
-    }
-    
-    // Find the main leaflet section and update it
-    const leafletSectionIndex = composition.section.findIndex((s: any) => s.section && Array.isArray(s.section));
-    if (leafletSectionIndex >= 0) {
-        composition.section[leafletSectionIndex].section = leafletSectionList;
-    } else if (composition.section.length > 0) {
-        // Fallback: update first section
-        composition.section[0].section = leafletSectionList;
     }
     
     return epi;

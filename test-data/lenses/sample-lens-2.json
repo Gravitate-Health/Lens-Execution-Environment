@@ -1,0 +1,27 @@
+{
+  "resourceType": "Library",
+  "id": "highlight-conditions-lens",
+  "identifier": [
+    {
+      "system": "http://example.org/lens",
+      "value": "highlight-conditions"
+    }
+  ],
+  "name": "HighlightConditionsLens",
+  "title": "Highlight Conditions Lens",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/library-type",
+        "code": "logic-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHJldHVybiBodG1sLnJlcGxhY2UoL2RpYWJldGVzL2dpLCAnPHN0cm9uZz4kJjwvc3Ryb25nPicpOwogIH0sCiAgZXhwbGFuYXRpb246IGZ1bmN0aW9uKCkgewogICAgcmV0dXJuICdIaWdobGlnaHRlZCBjb25kaXRpb25zIGJhc2VkIG9uIHBhdGllbnQgaGVhbHRoIGRhdGEnOwogIH0KfTs="
+    }
+  ]
+}
