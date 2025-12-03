@@ -1,4 +1,4 @@
-import { Logger } from "../utils/Logger";
+import { Logger } from "./Logger";
 
 export class ConditionsProvider {
     baseUrl: string;

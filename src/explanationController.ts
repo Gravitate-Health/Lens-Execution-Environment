@@ -1,7 +1,11 @@
-import { Logger } from "../utils/Logger"
-import { explanation, Language, LensIdentifier } from "../templates/explanationTemplate"
-import { ConditionsProvider } from "../providers/conditions.provider"
-import { AllergiesProvider } from "../providers/allergies.provider";
+import { Logger } from "./Logger"
+import { ConditionsProvider } from "./conditions.provider"
+import { AllergiesProvider } from "./allergies.provider";
+
+// TODO: Import explanation template types and data when available
+type Language = string;
+type LensIdentifier = string;
+const explanation: any = {};
 
 const FHIR_IPS_URL = process.env.FHIR_IPS_URL as string;
 

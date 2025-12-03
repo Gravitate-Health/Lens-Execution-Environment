@@ -2,6 +2,14 @@ import { Logger } from "./Logger";
 import { createExplanation } from "./explanationController";
 import JSDOM from "jsdom";
 
+/*
+    Applies the given lenses to the ePI's leaflet sections.
+    Returns the updated ePI and any focusing errors encountered.
+    @param epi The FHIR ePI resource to enhance (should be preprocessed).
+    @param ips The FHIR IPS resource containing patient information.
+    @param completeLenses An array of lens Library resources to apply.
+    @returns An object containing the enhanced ePI and any focusing errors.
+*/
 export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
         Logger.logInfo("lensesController.ts", "focusProcess", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
 
