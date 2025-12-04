@@ -357,6 +357,7 @@ const setExtensions = (epi: any, extensions: any) => {
 }
 
 const writeLeaflet = (epi: any, leafletSectionList: any[]) => {
+    // Mirror the logic of getLeaflet to maintain the same structure
     const composition = findResourceByType(epi, "Composition");
     if (!composition) {
         Logger.logError("lensesController.ts", "writeLeaflet", "Composition resource not found in ePI");
@@ -368,14 +369,21 @@ const writeLeaflet = (epi: any, leafletSectionList: any[]) => {
         return epi;
     }
     
-    // Find the main leaflet section and update it
+    // Find the main leaflet section (same logic as getLeaflet)
     const leafletSectionIndex = composition.section.findIndex((s: any) => s.section && Array.isArray(s.section));
-    if (leafletSectionIndex >= 0) {
-        composition.section[leafletSectionIndex].section = leafletSectionList;
-    } else if (composition.section.length > 0) {
-        // Fallback: update first section
-        composition.section[0].section = leafletSectionList;
+    if (leafletSectionIndex === -1) {
+        Logger.logError("lensesController.ts", "writeLeaflet", "No leaflet section with subsections found");
+        // Fall back to writing to first section if it exists
+        if (composition.section[0]) {
+            composition.section[0].section = leafletSectionList;
+        } else {
+            Logger.logError("lensesController.ts", "writeLeaflet", "Composition has no sections to write leaflet to");
+        }
+        return epi;
     }
+    
+    // Write the leaflet subsections back to the same location getLeaflet reads from
+    composition.section[leafletSectionIndex].section = leafletSectionList;
     
     return epi;
 }

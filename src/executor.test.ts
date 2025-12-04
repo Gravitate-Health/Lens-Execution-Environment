@@ -96,6 +96,64 @@ describe('Lens Execution Environment - Integration Tests', () => {
           }
         });
 
+        it('should preserve composition section structure', async () => {
+          const lensData = lenses.map(l => l.data);
+          
+          // Deep clone input ePI to avoid mutations affecting the test
+          const inputEpi = JSON.parse(JSON.stringify(epi));
+          const result = await applyLenses(inputEpi, ips, lensData);
+          
+          // Find composition in input and output
+          const inputComposition = epi.entry?.find((e: any) => e.resource?.resourceType === 'Composition')?.resource;
+          const outputComposition = result.epi.entry?.find((e: any) => e.resource?.resourceType === 'Composition')?.resource;
+          
+          expect(inputComposition).toBeDefined();
+          expect(outputComposition).toBeDefined();
+          
+          // Both should have sections
+          expect(inputComposition.section).toBeDefined();
+          expect(outputComposition.section).toBeDefined();
+          expect(Array.isArray(inputComposition.section)).toBe(true);
+          expect(Array.isArray(outputComposition.section)).toBe(true);
+          
+          // Recursive function to validate section structure at all levels
+          const validateSectionStructure = (inputSection: any, outputSection: any, path: string = 'section') => {
+            // Title should be preserved
+            if (inputSection.title) {
+              expect(outputSection.title).toBe(inputSection.title);
+            }
+            
+            // Code should be preserved
+            if (inputSection.code) {
+              expect(outputSection.code).toEqual(inputSection.code);
+            }
+            
+            // If input has subsections, recursively validate them
+            if (inputSection.section && Array.isArray(inputSection.section)) {
+              expect(outputSection.section).toBeDefined();
+              expect(Array.isArray(outputSection.section)).toBe(true);
+              expect(outputSection.section.length).toBe(inputSection.section.length);
+              
+              // Recursively validate each subsection
+              inputSection.section.forEach((inputSubsection: any, subIndex: number) => {
+                validateSectionStructure(
+                  inputSubsection, 
+                  outputSection.section[subIndex], 
+                  `${path}[${subIndex}]`
+                );
+              });
+            }
+          };
+          
+          // Section structure should be preserved at all levels
+          expect(outputComposition.section.length).toBe(inputComposition.section.length);
+          
+          // Validate each top-level section and all its nested subsections
+          inputComposition.section.forEach((inputSection: any, index: number) => {
+            validateSectionStructure(inputSection, outputComposition.section[index], `section[${index}]`);
+          });
+        });
+
         // Test each lens individually
         lenses.forEach(({ name: lensName, data: lens }) => {
           it(`should apply lens: ${lensName}`, async () => {
