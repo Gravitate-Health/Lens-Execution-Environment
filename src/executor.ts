@@ -130,11 +130,10 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
 
         const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
-
-        // Create enhance function from lens
-        const lensFunction = new Function("epi, ips, pv, html", lensCode)
-        const resObject = lensFunction(epi, ips, {}, leafletHTMLString)
         try {
+            // Create enhance function from lens
+            const lensFunction = new Function("epi, ips, pv, html", lensCode)
+            const resObject = lensFunction(epi, ips, {}, leafletHTMLString)
             // Execute lens and save result on ePI leaflet section
             const enhancedHtml = await resObject.enhance()
             
@@ -159,10 +158,9 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
 
             leafletSectionList = getLeafletSectionListFromHTMLString(enhancedHtml, leafletSectionList)
         } catch (error) {
-            Logger.logError("lensesController.ts", "focusProcess", `Error executing lens ${lensIdentifier} on leaflet sections`)
-            console.error(error);
+            Logger.logError("lensesController.ts", "focusProcess", `Error executing lens ${lensIdentifier} on leaflet sections` + JSON.stringify(error))
             focusingErrors.push({
-                message: "Error executing lens",
+                message: "Error executing lens" + JSON.stringify(error),
                 lensName: lensIdentifier
             })
             return {

@@ -205,10 +205,16 @@ describe('Lens Execution Environment - Edge Cases', () => {
     it('should handle invalid lens gracefully', async () => {
       const invalidLens = { resourceType: 'Library', content: [{ data: 'aW52YWxpZA==' }] }; // "invalid" in base64
       
-      // Invalid lens should throw or be captured in errors
-      await expect(async () => {
-        await applyLenses(sampleEpi, sampleIps, [invalidLens]);
-      }).rejects.toThrow();
+      // Invalid lens should be captured in errors, not throw
+      const result = await applyLenses(sampleEpi, sampleIps, [invalidLens]);
+      
+      expect(result).toBeDefined();
+      expect(result.focusingErrors).toBeDefined();
+      expect(result.focusingErrors.length).toBeGreaterThan(0);
+      // Should contain error about the invalid lens
+      if (result.focusingErrors[0]) {
+        expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+      }
     });
   }
 });
