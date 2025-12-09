@@ -137,18 +137,23 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         try {
             // Execute lens and save result on ePI leaflet section
             const enhancedHtml = await resObject.enhance()
-            // If the lens has an explanation function, execute it
-            if (resObject.explanation == undefined || resObject.explanation == null || typeof resObject.explanation !== 'function') {
-                Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
-                resObject.explanation = async () => {
-                    return ""
+            
+            // Get explanation if available - with fallback to empty string
+            if (typeof resObject.explanation === 'function') {
+                try {
+                    explanation = await resObject.explanation()
+                } catch (explanationError) {
+                    // Explanation is optional, log the error but continue
+                    Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} explanation function failed: ${explanationError}, using empty string`)
+                    explanation = ""
                 }
+            } else {
+                Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
+                explanation = ""
             }
             
-            explanation = await resObject.explanation()
             const diff = leafletHTMLString.localeCompare(enhancedHtml)
             if (diff != 0) {
-//                lensApplied = true
                 Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} applied to leaflet sections`)
             }
 
@@ -275,8 +280,13 @@ const findResourceByType = (resource: any, resourceType: string): any => {
 }
 
 const getLensIdenfier = (lens: any) => {
-    const lensIdentifier = lens["identifier"][0]["value"]
-    return lensIdentifier
+    try {
+        const lensIdentifier = lens["identifier"][0]["value"]
+        return lensIdentifier
+    } catch (error) {
+        Logger.logError("lensesController.ts", "getLensIdenfier", "Could not extract lens identifier")
+    }
+    return null;
 }
 
 const getLeaflet = (epi: any) => {
