@@ -80,19 +80,27 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
 
 const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any) => {
     const lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
-    let lensCode = "" 
+    let lensCode = ""
+    const focusingErrors: { message: string; lensName: string; }[] = []
     try {
-        const lensBase64data = lens.content[0].data
+        const lensBase64data = extractLensBase64Data(lens)
+        if (!lensBase64data) {
+            throw new Error("Lens content missing: no Base64 data found in Library.content or Library.data")
+        }
         // Decode base64 with proper UTF-8 support
         lensCode = Buffer.from(lensBase64data, 'base64').toString('utf-8')
-    } catch (error) {
+    } catch (error: any) {
         console.error('Lens code extraction error: ', error);
+        focusingErrors.push({
+            message: `Lens code extraction error: ${error?.message || String(error)}`,
+            lensName: lensIdentifier
+        })
         return {
-                leafletSectionList: leafletSectionList,
-                explanation: ""
-            }
+            leafletSectionList: leafletSectionList,
+            explanation: "",
+            focusingErrors
+        }
     }
-    const focusingErrors: { message: string; lensName: string; }[] = []
     try {
         // Iterate on leaflet sections
         // I want to only execute the lens all sections at a time, so I will not use a forEach
@@ -104,7 +112,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             })
             return {
                 leafletSectionList: leafletSectionList,
-                explanation: ""
+                explanation: "",
+                focusingErrors
             }
         }
         if (lensCode == undefined || lensCode == "") {
@@ -114,7 +123,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             })
             return {
                 leafletSectionList: leafletSectionList,
-                explanation: ""
+                explanation: "",
+                focusingErrors
             }
         }
         if (typeof lensCode !== 'string') {
@@ -124,7 +134,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
          })
             return {
                 leafletSectionList: leafletSectionList,
-                explanation: ""
+                explanation: "",
+                focusingErrors
             }
         }
 
@@ -184,6 +195,39 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             focusingErrors: focusingErrors
         }
     }
+}
+
+// Extract Base64-encoded lens code from a FHIR Library resource in a robust way
+const extractLensBase64Data = (lens: any): string | null => {
+    if (!lens) return null
+
+    // Preferred: Library.content as an array of Attachments with data
+    if (Array.isArray(lens.content) && lens.content.length > 0) {
+        // Try any element with a data field
+        const withData = lens.content.find((c: any) => typeof c?.data === 'string' && c.data.length > 0)
+        if (withData?.data) return withData.data
+
+        // Support data URLs in Attachment.url (data:<mime>;base64,<payload>)
+        const withDataUrl = lens.content.find((c: any) => typeof c?.url === 'string' && c.url.startsWith('data:'))
+        if (withDataUrl?.url) {
+            const idx = withDataUrl.url.indexOf('base64,')
+            if (idx >= 0) {
+                return withDataUrl.url.substring(idx + 'base64,'.length)
+            }
+        }
+    }
+
+    // Some lenses may embed the code directly as Library.data
+    if (typeof lens.data === 'string' && lens.data.length > 0) {
+        return lens.data
+    }
+
+    // Non-standard but be tolerant: content as an object instead of array
+    if (lens.content && !Array.isArray(lens.content) && typeof lens.content?.data === 'string') {
+        return lens.content.data
+    }
+
+    return null
 }
 
 const getLeafletHTMLString = (leafletSectionList: any[]) => {
