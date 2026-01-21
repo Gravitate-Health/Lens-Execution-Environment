@@ -19,7 +19,7 @@ const defaultExplanation: { [key in Language]: string } = {
     @returns An object containing the enhanced ePI and any focusing errors.
 */
 export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
-        Logger.logInfo("lensesController.ts", "focusProcess", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
+        Logger.logInfo("executor.ts", "applyLenses", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
 
     // Get leaflet sectoins from ePI
     let leafletSectionList = getLeaflet(epi)
@@ -90,7 +90,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         // Decode base64 with proper UTF-8 support
         lensCode = Buffer.from(lensBase64data, 'base64').toString('utf-8')
     } catch (error: any) {
-        console.error('Lens code extraction error: ', error);
+        Logger.logError("executor.ts", "applyLensToSections", `Lens code extraction error: ${error?.message || String(error)}`);
         focusingErrors.push({
             message: `Lens code extraction error: ${error?.message || String(error)}`,
             lensName: lensIdentifier
@@ -104,7 +104,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
     try {
         // Iterate on leaflet sections
         // I want to only execute the lens all sections at a time, so I will not use a forEach
-        Logger.logInfo("lensesController.ts", "focusProcess", `Applying lens ${lensIdentifier} to leaflet sections`)
+        Logger.logInfo("executor.ts", "applyLensToSections", `Applying lens ${lensIdentifier} to leaflet sections`)
         if (leafletSectionList == undefined || leafletSectionList.length == 0) {
             focusingErrors.push({
                 message: "No leaflet sections found",
@@ -154,22 +154,22 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
                     explanation = await resObject.explanation()
                 } catch (explanationError) {
                     // Explanation is optional, log the error but continue
-                    Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} explanation function failed: ${explanationError}, using empty string`)
+                    Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} explanation function failed: ${explanationError}, using empty string`)
                     explanation = ""
                 }
             } else {
-                Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
+                Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
                 explanation = ""
             }
             
             const diff = leafletHTMLString.localeCompare(enhancedHtml)
             if (diff != 0) {
-                Logger.logInfo("lensesController.ts", "focusProcess", `Lens ${lensIdentifier} applied to leaflet sections`)
+                Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} applied to leaflet sections`)
             }
 
             leafletSectionList = getLeafletSectionListFromHTMLString(enhancedHtml, leafletSectionList)
         } catch (error) {
-            Logger.logError("lensesController.ts", "focusProcess", `Error executing lens ${lensIdentifier} on leaflet sections` + JSON.stringify(error))
+            Logger.logError("executor.ts", "applyLensToSections", `Error executing lens ${lensIdentifier} on leaflet sections: ${JSON.stringify(error)}`)
             focusingErrors.push({
                 message: "Error executing lens" + JSON.stringify(error),
                 lensName: lensIdentifier
@@ -187,8 +187,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             focusingErrors: focusingErrors
         }
     } catch (error: any) {
-        console.log(error);
-        console.log("finished before expected!")
+        Logger.logError("executor.ts", "applyLensToSections", `Unexpected error: ${JSON.stringify(error)}`);
         return {
             leafletSectionList: leafletSectionList,
             explanation: "",
@@ -326,7 +325,7 @@ const getLensIdenfier = (lens: any) => {
         const lensIdentifier = lens["identifier"][0]["value"]
         return lensIdentifier
     } catch (error) {
-        Logger.logError("lensesController.ts", "getLensIdenfier", "Could not extract lens identifier")
+        Logger.logError("executor.ts", "getLensIdenfier", "Could not extract lens identifier")
     }
     return null;
 }
@@ -334,19 +333,19 @@ const getLensIdenfier = (lens: any) => {
 const getLeaflet = (epi: any) => {
     const composition = findResourceByType(epi, "Composition");
     if (!composition) {
-        Logger.logError("lensesController.ts", "getLeaflet", "Composition resource not found in ePI");
+        Logger.logError("executor.ts", "getLeaflet", "Composition resource not found in ePI");
         return null;
     }
     
     if (!composition.section || !Array.isArray(composition.section)) {
-        Logger.logError("lensesController.ts", "getLeaflet", "Composition has no sections");
+        Logger.logError("executor.ts", "getLeaflet", "Composition has no sections");
         return null;
     }
     
     // Find the main leaflet section (usually first section with subsections)
     const leafletSection = composition.section.find((s: any) => s.section && Array.isArray(s.section));
     if (!leafletSection) {
-        Logger.logError("lensesController.ts", "getLeaflet", "No leaflet section with subsections found");
+        Logger.logError("executor.ts", "getLeaflet", "No leaflet section with subsections found");
         return composition.section[0]?.section || null;
     }
     
@@ -381,22 +380,7 @@ const getlanguage = (epi: any) => {
     return composition.language || null;
 }
 
-/*
-const getPatientIdentifierFromPatientSummary = (ips: any) => {
-    const patient = findResourceByType(ips, "Patient");
-    if (!patient) {
-        Logger.logWarn("lensesController.ts", "getPatientIdentifierFromPatientSummary", "Patient resource not found in IPS");
-        return null;
-    }
-    
-    if (!patient.identifier || !Array.isArray(patient.identifier) || patient.identifier.length === 0) {
-        Logger.logWarn("lensesController.ts", "getPatientIdentifierFromPatientSummary", "Patient has no identifiers");
-        return null;
-    }
-    
-    return patient.identifier[0].value || null;
-}
-*/
+
 const getExtensions = (epi: any) => {
     const composition = findResourceByType(epi, "Composition");
     return composition.extension || [];
@@ -412,24 +396,24 @@ const writeLeaflet = (epi: any, leafletSectionList: any[]) => {
     // Mirror the logic of getLeaflet to maintain the same structure
     const composition = findResourceByType(epi, "Composition");
     if (!composition) {
-        Logger.logError("lensesController.ts", "writeLeaflet", "Composition resource not found in ePI");
+        Logger.logError("executor.ts", "writeLeaflet", "Composition resource not found in ePI");
         return epi;
     }
     
     if (!composition.section || !Array.isArray(composition.section)) {
-        Logger.logError("lensesController.ts", "writeLeaflet", "Composition has no sections");
+        Logger.logError("executor.ts", "writeLeaflet", "Composition has no sections");
         return epi;
     }
     
     // Find the main leaflet section (same logic as getLeaflet)
     const leafletSectionIndex = composition.section.findIndex((s: any) => s.section && Array.isArray(s.section));
     if (leafletSectionIndex === -1) {
-        Logger.logError("lensesController.ts", "writeLeaflet", "No leaflet section with subsections found");
+        Logger.logError("executor.ts", "writeLeaflet", "No leaflet section with subsections found");
         // Fall back to writing to first section if it exists
         if (composition.section[0]) {
             composition.section[0].section = leafletSectionList;
         } else {
-            Logger.logError("lensesController.ts", "writeLeaflet", "Composition has no sections to write leaflet to");
+            Logger.logError("executor.ts", "writeLeaflet", "Composition has no sections to write leaflet to");
         }
         return epi;
     }
