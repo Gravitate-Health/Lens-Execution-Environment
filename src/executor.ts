@@ -322,10 +322,10 @@ const findResourceByType = (resource: any, resourceType: string): any => {
 
 const getLensIdenfier = (lens: any) => {
     try {
-        const lensIdentifier = lens["identifier"][0]["value"]
+        const lensIdentifier = lens["name"]
         return lensIdentifier
     } catch (error) {
-        Logger.logError("executor.ts", "getLensIdenfier", "Could not extract lens identifier")
+        Logger.logError("executor.ts", "getLensIdenfier", "Could not extract lens name (mandatory) from Library resource");
     }
     return null;
 }
