@@ -64,3 +64,80 @@ The FHIR Implementation Guide for LEE and Lenses is available at:
 *   **Lens Examples:** External repository `Gravitate-Health/lens-selector-example`.
 *   **Deployment Configuration (FM Discovery):** Kubernetes deployments must include the label `eu.gravitate-health.fosps.focusing: "true"` for the Focusing Manager to discover them.
 *   **API Specification:** Refer to the external OAS Swagger API for the Focusing Manager interfaces: `https://fosps.gravitatehealth.eu/swagger-fosps/?urls.primaryName=Focusing%20Manager`.
+
+### V. Release Process
+
+Follow these steps to release a new version of the LEE package:
+
+1.  **Lint:** Verify code quality passes ESLint checks
+    ```bash
+    npm run lint
+    ```
+    *   Should pass with only warnings (no errors)
+    *   All warnings are currently `@typescript-eslint/no-explicit-any` (acceptable)
+
+2.  **Build:** Compile TypeScript to CJS, ESM, types, and copy worker file
+    ```bash
+    npm run build
+    ```
+    *   Builds: `dist/cjs/`, `dist/esm/`, `dist/types/`
+    *   Copies: `src/lens-worker.js` to output directories
+
+3.  **Test:** Run comprehensive test suite (377 tests)
+    ```bash
+    npm test
+    ```
+    *   All 377 tests must pass
+    *   Includes integration tests, malicious lens handling, timeout verification
+    *   Test duration: ~130-135 seconds
+
+4.  **Version Bump:** Update package version based on semver
+    ```bash
+    npm version patch   # Bug fixes (0.0.4 → 0.0.5)
+    npm version minor   # New features, backwards compatible (0.0.4 → 0.1.0)
+    npm version major   # Breaking changes (0.0.4 → 1.0.0)
+    ```
+    *   Default to `patch` if not specified
+    *   This automatically updates `package.json` and `package-lock.json`
+    *   Creates a git commit with message "v{version}"
+    *   Creates a git tag "v{version}"
+
+5.  **Review Changes:** Verify the automated commit and tag
+    ```bash
+    git show HEAD        # Review the version bump commit
+    git tag --list       # Verify new tag was created
+    ```
+
+6.  **Push:** Push commits and tags to remote repository
+    ```bash
+    git push && git push --tags
+    ```
+    *   Pushes the version commit to main branch
+    *   Pushes the version tag (triggers any CI/CD if configured)
+
+7.  **NPM Login:** Ensure authentication is ready (if not already logged in)
+    ```bash
+    npm login
+    ```
+    *   Required for publishing to npm registry or GitHub Packages
+    *   Only needed once per session/machine
+
+8.  **Publish:** Publish the package to the registry
+    ```bash
+    npm publish
+    ```
+    *   Runs `prepublishOnly` script automatically (builds again)
+    *   Uploads package to configured registry
+    *   Package becomes available at `@gravitate-health/lens-execution-environment@{version}`
+
+**Quick Release Command (after manual verification):**
+```bash
+npm run lint && npm run build && npm test && npm version patch && git push && git push --tags && npm publish
+```
+
+**Important Notes:**
+-   Always run lint, build, and test before version bump
+-   Use semantic versioning: major.minor.patch
+-   Never force push or delete published versions
+-   Version bump creates commit + tag automatically
+-   The `prepublishOnly` script ensures fresh build before publish
