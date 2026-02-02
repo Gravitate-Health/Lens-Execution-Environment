@@ -87,8 +87,18 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         if (!lensBase64data) {
             throw new Error("Lens content missing: no Base64 data found in Library.content or Library.data")
         }
+        // Validate lensBase64data is a string before passing to Buffer.from
+        if (typeof lensBase64data !== 'string') {
+            throw new Error(`Lens Base64 data must be a string, received: ${typeof lensBase64data}`)
+        }
+        if (lensBase64data.trim().length === 0) {
+            throw new Error("Lens Base64 data is empty")
+        }
         // Decode base64 with proper UTF-8 support
         lensCode = Buffer.from(lensBase64data, 'base64').toString('utf-8')
+        if (!lensCode || lensCode.trim().length === 0) {
+            throw new Error("Decoded lens code is empty")
+        }
     } catch (error: any) {
         Logger.logError("executor.ts", "applyLensToSections", `Lens code extraction error: ${error?.message || String(error)}`);
         focusingErrors.push({
@@ -142,19 +152,55 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
         try {
-            // Create enhance function from lens
-            const lensFunction = new Function("epi, ips, pv, html", lensCode)
-            const resObject = lensFunction(epi, ips, {}, leafletHTMLString)
-            // Execute lens and save result on ePI leaflet section
-            const enhancedHtml = await resObject.enhance()
+            // Create enhance function from lens with error protection
+            let lensFunction: Function;
+            try {
+                lensFunction = new Function("epi, ips, pv, html", lensCode)
+            } catch (functionCreationError: any) {
+                Logger.logError("executor.ts", "applyLensToSections", `Failed to create lens function for ${lensIdentifier}: ${functionCreationError?.message || String(functionCreationError)}`);
+                throw new Error(`Lens function creation failed: ${functionCreationError?.message || String(functionCreationError)}`);
+            }
             
-            // Get explanation if available - with fallback to empty string
+            // Invoke lens function with error protection
+            let resObject: any;
+            try {
+                resObject = lensFunction(epi, ips, {}, leafletHTMLString)
+                if (!resObject || typeof resObject !== 'object') {
+                    throw new Error(`Lens function must return an object, received: ${typeof resObject}`);
+                }
+            } catch (functionInvocationError: any) {
+                Logger.logError("executor.ts", "applyLensToSections", `Failed to invoke lens function for ${lensIdentifier}: ${functionInvocationError?.message || String(functionInvocationError)}`);
+                throw new Error(`Lens function invocation failed: ${functionInvocationError?.message || String(functionInvocationError)}`);
+            }
+            
+            // Execute enhance() with error protection
+            let enhancedHtml: string;
+            try {
+                if (typeof resObject.enhance !== 'function') {
+                    throw new Error(`Lens must provide an enhance() function`);
+                }
+                enhancedHtml = await resObject.enhance()
+                if (typeof enhancedHtml !== 'string') {
+                    throw new Error(`enhance() must return a string, received: ${typeof enhancedHtml}`);
+                }
+            } catch (enhanceError: any) {
+                Logger.logError("executor.ts", "applyLensToSections", `Failed to execute enhance() for ${lensIdentifier}: ${enhanceError?.message || String(enhanceError)}`);
+                throw new Error(`enhance() execution failed: ${enhanceError?.message || String(enhanceError)}`);
+            }
+            
+            // Get explanation if available - with comprehensive error protection
             if (typeof resObject.explanation === 'function') {
                 try {
-                    explanation = await resObject.explanation()
-                } catch (explanationError) {
+                    const explanationResult = await resObject.explanation()
+                    // Validate explanation result
+                    if (explanationResult !== undefined && explanationResult !== null) {
+                        explanation = String(explanationResult);
+                    } else {
+                        explanation = "";
+                    }
+                } catch (explanationError: any) {
                     // Explanation is optional, log the error but continue
-                    Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} explanation function failed: ${explanationError}, using empty string`)
+                    Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} explanation function failed: ${explanationError?.message || String(explanationError)}, using empty string`)
                     explanation = ""
                 }
             } else {
@@ -167,11 +213,27 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
                 Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} applied to leaflet sections`)
             }
 
-            leafletSectionList = getLeafletSectionListFromHTMLString(enhancedHtml, leafletSectionList)
-        } catch (error) {
-            Logger.logError("executor.ts", "applyLensToSections", `Error executing lens ${lensIdentifier} on leaflet sections: ${JSON.stringify(error)}`)
+            // Parse enhanced HTML back to leaflet sections with validation
+            try {
+                const newLeafletSectionList = getLeafletSectionListFromHTMLString(enhancedHtml, leafletSectionList)
+                if (!Array.isArray(newLeafletSectionList) || newLeafletSectionList.length === 0) {
+                    Logger.logWarning("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} produced empty section list, keeping original`)
+                } else {
+                    leafletSectionList = newLeafletSectionList
+                }
+            } catch (parseError: any) {
+                Logger.logError("executor.ts", "applyLensToSections", `Failed to parse enhanced HTML for ${lensIdentifier}: ${parseError?.message || String(parseError)}`);
+                throw new Error(`HTML parsing failed: ${parseError?.message || String(parseError)}`);
+            }
+        } catch (error: any) {
+            const errorMessage = error?.message || error?.toString() || 'Unknown error';
+            const errorStack = error?.stack || '';
+            Logger.logError("executor.ts", "applyLensToSections", `Error executing lens ${lensIdentifier}: ${errorMessage}`);
+            if (errorStack) {
+                Logger.logError("executor.ts", "applyLensToSections", `Stack trace: ${errorStack}`);
+            }
             focusingErrors.push({
-                message: "Error executing lens" + JSON.stringify(error),
+                message: `Error executing lens: ${errorMessage}`,
                 lensName: lensIdentifier
             })
             return {

@@ -58,4 +58,14 @@ export abstract class Logger {
     public static logInfo(file: string, task: string, message: string) {
         Logger.log(file, "INFO", task, message);
     }
+
+    /**
+     * Alias for logWarn - Log warning level: Statements that describe potentially harmful events or states
+     * @param file The source file name where the log originates
+     * @param task Function name or specific operation being logged
+     * @param message The warning message to display
+     */
+    public static logWarning(file: string, task: string, message: any) {
+        Logger.logWarn(file, task, message);
+    }
 }
