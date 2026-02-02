@@ -1,0 +1,33 @@
+{
+  "resourceType": "Library",
+  "id": "malicious-syntax-error",
+  "meta": {
+    "profile": [
+      "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version",
+      "valueString": "0.0.4"
+    }
+  ],
+  "url": "http://gravitate-health.lst.tfo.upm.es/lenses/malicious-syntax-error",
+  "version": "1.0.0",
+  "name": "MaliciousSyntaxErrorLens",
+  "title": "Malicious Lens With Syntax Error",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHRoaXMuaXMuaW52YWxpZC5zeW50YXguLi4KICAgIHJldHVybiBodG1sOwogIH0KfTsK"
+    }
+  ]
+}

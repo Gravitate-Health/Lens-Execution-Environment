@@ -25,7 +25,10 @@ function loadJsonFiles(directory: string): Array<{ name: string; data: any }> {
     return [];
   }
 
-  const files = fs.readdirSync(directory).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(directory)
+    .filter(f => f.endsWith('.json'))
+    // Exclude malicious lenses from general test runs
+    .filter(f => !f.startsWith('malicious-'));
   return files.map(filename => ({
     name: filename.replace('.json', ''),
     data: JSON.parse(fs.readFileSync(path.join(directory, filename), 'utf-8'))
@@ -272,4 +275,170 @@ describe('Lens Execution Environment - Data Validation', () => {
       });
     });
   });
+});
+
+describe('Lens Execution Environment - Malicious Lens Handling', () => {
+  const sampleEpi = JSON.parse(fs.readFileSync(path.join(__dirname, '../test-data/epis/sample-epi-1.json'), 'utf8'));
+  const sampleIps = JSON.parse(fs.readFileSync(path.join(__dirname, '../test-data/ips/sample-ips-1.json'), 'utf8'));
+
+  it('should handle lens that throws an error', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-throws-error-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBeGreaterThan(0);
+    // Should contain error about the thrown error
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    expect(result.focusingErrors[0][0].message).toContain('intentionally throws');
+  });
+
+  it('should handle lens with syntax errors', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-syntax-error-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBeGreaterThan(0);
+    // Should contain error about syntax
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+  });
+
+  it('should handle lens that returns null', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-returns-null-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    // May or may not generate errors depending on implementation
+    // But should not crash
+  });
+
+  it('should handle lens that returns wrong type (string instead of object)', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-returns-string-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    // Should handle gracefully
+  });
+
+  it('should handle lens that accesses undefined properties deeply', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-accesses-undefined-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBeGreaterThan(0);
+    // Should contain error about undefined access
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+  });
+
+  it('should handle lens that modifies input data directly', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-modifies-input-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    
+    // Verify original ePI is not modified (if LEE implements protection)
+    // This test documents current behavior
+    expect(result).toBeDefined();
+  });
+
+  it('should handle lens that returns nothing (undefined)', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-no-return-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    // Should handle gracefully when lens returns undefined
+  });
+
+  it('should handle multiple malicious lenses in sequence', async () => {
+    const maliciousLens1 = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-throws-error-lens.json'), 'utf8')
+    );
+    const maliciousLens2 = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-returns-null-lens.json'), 'utf8')
+    );
+    const maliciousLens3 = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-accesses-undefined-lens.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens1, maliciousLens2, maliciousLens3]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBe(3);
+    // All three lenses should be attempted even if earlier ones fail
+  });
+
+  it('should recover and apply valid lens after malicious lens', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-throws-error-lens.json'), 'utf8')
+    );
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens, validLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBe(2);
+    
+    // First lens should have errors
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    
+    // Second lens should succeed (empty errors)
+    expect(result.focusingErrors[1].length).toBe(0);
+  });
+
+  // Note: Infinite loop test is intentionally commented out as it would hang tests
+  // In production, this should be handled with timeouts at the infrastructure level
+  /*
+  it('should handle lens with infinite loop (with timeout)', async () => {
+    const maliciousLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-infinite-loop-lens.json'), 'utf8')
+    );
+
+    // This test requires timeout implementation in LEE
+    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    expect(result.focusingErrors[0][0]).toContain('timeout');
+  }, 10000); // 10 second timeout for the test itself
+  */
 });

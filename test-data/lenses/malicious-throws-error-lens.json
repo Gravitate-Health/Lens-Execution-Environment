@@ -1,0 +1,33 @@
+{
+  "resourceType": "Library",
+  "id": "malicious-throws-error",
+  "meta": {
+    "profile": [
+      "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version",
+      "valueString": "0.0.4"
+    }
+  ],
+  "url": "http://gravitate-health.lst.tfo.upm.es/lenses/malicious-throws-error",
+  "version": "1.0.0",
+  "name": "MaliciousThrowsErrorLens",
+  "title": "Malicious Lens That Throws Error",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHRocm93IG5ldyBFcnJvcigiVGhpcyBsZW5zIGludGVudGlvbmFsbHkgdGhyb3dzIGFuIGVycm9yISIpOwogIH0KfTsK"
+    }
+  ]
+}

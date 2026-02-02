@@ -1,0 +1,33 @@
+{
+  "resourceType": "Library",
+  "id": "malicious-infinite-loop",
+  "meta": {
+    "profile": [
+      "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version",
+      "valueString": "0.0.4"
+    }
+  ],
+  "url": "http://gravitate-health.lst.tfo.upm.es/lenses/malicious-infinite-loop",
+  "version": "1.0.0",
+  "name": "MaliciousInfiniteLoopLens",
+  "title": "Malicious Lens With Infinite Loop",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHdoaWxlICh0cnVlKSB7CiAgICAgIC8vIEtlZXAgc3Bpbm5pbmcKICAgIH0KICAgIHJldHVybiBodG1sOwogIH0KfTsK"
+    }
+  ]
+}

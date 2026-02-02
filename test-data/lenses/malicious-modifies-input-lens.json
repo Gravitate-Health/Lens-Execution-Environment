@@ -1,0 +1,33 @@
+{
+  "resourceType": "Library",
+  "id": "malicious-modifies-input",
+  "meta": {
+    "profile": [
+      "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version",
+      "valueString": "0.0.4"
+    }
+  ],
+  "url": "http://gravitate-health.lst.tfo.upm.es/lenses/malicious-modifies-input",
+  "version": "1.0.0",
+  "name": "MaliciousModifiesInputLens",
+  "title": "Malicious Lens That Modifies Input Data",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIGlmIChlcGkuZW50cnkgJiYgZXBpLmVudHJ5Lmxlbmd0aCA+IDApIHsKICAgICAgZXBpLmVudHJ5WzBdLm1hbGljaW91c0ZpZWxkID0gIkhpamFja2VkISI7CiAgICB9CiAgICByZXR1cm4gaHRtbDsKICB9Cn07Cg=="
+    }
+  ]
+}

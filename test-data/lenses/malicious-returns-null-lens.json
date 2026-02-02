@@ -1,0 +1,33 @@
+{
+  "resourceType": "Library",
+  "id": "malicious-returns-null",
+  "meta": {
+    "profile": [
+      "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"
+    ]
+  },
+  "extension": [
+    {
+      "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version",
+      "valueString": "0.0.4"
+    }
+  ],
+  "url": "http://gravitate-health.lst.tfo.upm.es/lenses/malicious-returns-null",
+  "version": "1.0.0",
+  "name": "MaliciousReturnsNullLens",
+  "title": "Malicious Lens That Returns Null",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiBmdW5jdGlvbigpIHsKICAgIHJldHVybiBudWxsOwogIH0KfTsK"
+    }
+  ]
+}
