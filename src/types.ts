@@ -23,6 +23,19 @@ export interface FocusingError {
 export interface ApplyLensesResult {
   /** The enhanced ePI */
   epi: any;
-  /** List of all focusing errors that occurred */
-  focusingErrors: FocusingError[];
+  /** List of focusing errors per lens. Each element is an array of errors for that lens. */
+  focusingErrors: FocusingError[][];
+}
+
+/**
+ * Configuration options for the Lens Execution Environment.
+ * All options are optional and will fall back to sensible defaults.
+ */
+export interface LensExecutionConfig {
+  /**
+   * Maximum time in milliseconds for lens function execution (enhance or explanation).
+   * If a lens function takes longer than this, it will be terminated.
+   * @default 1000 (1 second)
+   */
+  lensExecutionTimeout?: number;
 }

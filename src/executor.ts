@@ -1,5 +1,8 @@
 import { Logger } from "./Logger";
 import JSDOM from "jsdom";
+import { LensExecutionConfig, ApplyLensesResult } from "./types";
+import { Worker } from 'worker_threads';
+import * as path from 'path';
 
 type Language = "en" | "es" | "pt" | "da";
 
@@ -10,15 +13,32 @@ const defaultExplanation: { [key in Language]: string } = {
     "da": "Denne sektion blev fremhævet, fordi den er relevant for din sundhed."
 };
 
+/**
+ * Get the default configuration for the Lens Execution Environment.
+ * @returns The default LensExecutionConfig with all default values.
+ */
+export const getDefaultConfig = (): Required<LensExecutionConfig> => {
+    return {
+        lensExecutionTimeout: 1000, // 1 second default
+    };
+};
+
 /*
     Applies the given lenses to the ePI's leaflet sections.
     Returns the updated ePI and any focusing errors encountered.
     @param epi The FHIR ePI resource to enhance (should be preprocessed).
     @param ips The FHIR IPS resource containing patient information.
     @param completeLenses An array of lens Library resources to apply.
+    @param config Optional configuration for the LEE. Uses defaults if not provided.
     @returns An object containing the enhanced ePI and any focusing errors.
 */
-export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
+export const applyLenses = async (epi:any, ips: any, completeLenses: any[], config?: LensExecutionConfig): Promise<ApplyLensesResult> => {
+        // Merge provided config with defaults
+        const effectiveConfig: Required<LensExecutionConfig> = {
+            ...getDefaultConfig(),
+            ...config
+        };
+        
         Logger.logInfo("executor.ts", "applyLenses", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
 
     // Get leaflet sectoins from ePI
@@ -36,7 +56,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
         const epiLanguage = getlanguage(epi)
         // const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
-        const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips)
+        const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips, effectiveConfig)
         focusingErrors.push(lensApplication.focusingErrors)
         const lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
         if (lensApplied) {
@@ -78,7 +98,84 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[]) => {
     return {epi, focusingErrors}
 }
 
-const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any) => {
+/**
+ * Execute lens code in an isolated Worker Thread with timeout support.
+ * This allows lens execution to be interrupted even if it contains blocking infinite loops.
+ * 
+ * @param lensCode The lens JavaScript code to execute
+ * @param epi The ePI document
+ * @param ips The IPS document
+ * @param html The HTML string to process
+ * @param timeoutMs Timeout in milliseconds
+ * @param lensIdentifier Lens identifier for error messages
+ * @returns Promise that resolves with enhanced HTML and explanation, or rejects on error/timeout
+ */
+const executeLensInWorker = async (
+    lensCode: string,
+    epi: any,
+    ips: any,
+    html: string,
+    timeoutMs: number,
+    _lensIdentifier: string
+): Promise<{ enhancedHtml: string; explanation: string }> => {
+    return new Promise((resolve, reject) => {
+        // Use the plain JavaScript worker file (lens-worker.js)
+        // This avoids module compilation issues - the .js file is copied to dist as-is
+        const workerPath = path.join(__dirname, 'lens-worker.js');
+        
+        const worker = new Worker(workerPath, {
+            workerData: { lensCode, epi, ips, html }
+        });
+        
+        let isSettled = false;
+        
+        // Set timeout to terminate worker
+        const timeout = setTimeout(() => {
+            if (!isSettled) {
+                isSettled = true;
+                worker.terminate();
+                reject(new Error(`Lens execution timed out after ${timeoutMs}ms`));
+            }
+        }, timeoutMs);
+        
+        // Handle worker messages
+        worker.on('message', (message: { success: boolean; result?: any; error?: string }) => {
+            if (!isSettled) {
+                isSettled = true;
+                clearTimeout(timeout);
+                worker.terminate();
+                
+                if (message.success) {
+                    resolve(message.result);
+                } else {
+                    reject(new Error(message.error || 'Unknown worker error'));
+                }
+            }
+        });
+        
+        // Handle worker errors
+        worker.on('error', (error) => {
+            if (!isSettled) {
+                isSettled = true;
+                clearTimeout(timeout);
+                reject(error);
+            }
+        });
+        
+        // Handle worker exit
+        worker.on('exit', (code) => {
+            if (!isSettled) {
+                isSettled = true;
+                clearTimeout(timeout);
+                if (code !== 0) {
+                    reject(new Error(`Worker stopped with exit code ${code}`));
+                }
+            }
+        });
+    });
+};
+
+const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any, config: Required<LensExecutionConfig>) => {
     const lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
     let lensCode = ""
     const focusingErrors: { message: string; lensName: string; }[] = []
@@ -152,61 +249,18 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
         try {
-            // Create enhance function from lens with error protection
-            let lensFunction: (epi: any, ips: any, pv: any, html: any) => any;
-            try {
-                lensFunction = new Function("epi, ips, pv, html", lensCode) as (epi: any, ips: any, pv: any, html: any) => any
-            } catch (functionCreationError: any) {
-                Logger.logError("executor.ts", "applyLensToSections", `Failed to create lens function for ${lensIdentifier}: ${functionCreationError?.message || String(functionCreationError)}`);
-                throw new Error(`Lens function creation failed: ${functionCreationError?.message || String(functionCreationError)}`);
-            }
+            // Execute lens in isolated Worker Thread with timeout
+            const result = await executeLensInWorker(
+                lensCode,
+                epi,
+                ips,
+                leafletHTMLString,
+                config.lensExecutionTimeout,
+                lensIdentifier
+            );
             
-            // Invoke lens function with error protection
-            let resObject: any;
-            try {
-                resObject = lensFunction(epi, ips, {}, leafletHTMLString)
-                if (!resObject || typeof resObject !== 'object') {
-                    throw new Error(`Lens function must return an object, received: ${typeof resObject}`);
-                }
-            } catch (functionInvocationError: any) {
-                Logger.logError("executor.ts", "applyLensToSections", `Failed to invoke lens function for ${lensIdentifier}: ${functionInvocationError?.message || String(functionInvocationError)}`);
-                throw new Error(`Lens function invocation failed: ${functionInvocationError?.message || String(functionInvocationError)}`);
-            }
-            
-            // Execute enhance() with error protection
-            let enhancedHtml: string;
-            try {
-                if (typeof resObject.enhance !== 'function') {
-                    throw new Error(`Lens must provide an enhance() function`);
-                }
-                enhancedHtml = await resObject.enhance()
-                if (typeof enhancedHtml !== 'string') {
-                    throw new Error(`enhance() must return a string, received: ${typeof enhancedHtml}`);
-                }
-            } catch (enhanceError: any) {
-                Logger.logError("executor.ts", "applyLensToSections", `Failed to execute enhance() for ${lensIdentifier}: ${enhanceError?.message || String(enhanceError)}`);
-                throw new Error(`enhance() execution failed: ${enhanceError?.message || String(enhanceError)}`);
-            }
-            
-            // Get explanation if available - with comprehensive error protection
-            if (typeof resObject.explanation === 'function') {
-                try {
-                    const explanationResult = await resObject.explanation()
-                    // Validate explanation result
-                    if (explanationResult !== undefined && explanationResult !== null) {
-                        explanation = String(explanationResult);
-                    } else {
-                        explanation = "";
-                    }
-                } catch (explanationError: any) {
-                    // Explanation is optional, log the error but continue
-                    Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} explanation function failed: ${explanationError?.message || String(explanationError)}, using empty string`)
-                    explanation = ""
-                }
-            } else {
-                Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} does not have an explanation function, using empty string`)
-                explanation = ""
-            }
+            const enhancedHtml = result.enhancedHtml;
+            explanation = result.explanation;
             
             const diff = leafletHTMLString.localeCompare(enhancedHtml)
             if (diff != 0) {

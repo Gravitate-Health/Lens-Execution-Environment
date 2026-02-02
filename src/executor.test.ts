@@ -424,21 +424,112 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     expect(result.focusingErrors[1].length).toBe(0);
   });
 
-  // Note: Infinite loop test is intentionally commented out as it would hang tests
-  // In production, this should be handled with timeouts at the infrastructure level
-  /*
-  it('should handle lens with infinite loop (with timeout)', async () => {
-    const maliciousLens = JSON.parse(
+  it('should timeout infinite loop lens with default timeout (using Worker Threads)', async () => {
+    const infiniteLoopLens = JSON.parse(
       fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-infinite-loop-lens.json'), 'utf8')
     );
 
-    // This test requires timeout implementation in LEE
-    const result = await applyLenses(sampleEpi, sampleIps, [maliciousLens]);
+    // Worker Threads can interrupt blocking infinite loops
+    const result = await applyLenses(sampleEpi, sampleIps, [infiniteLoopLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBe(1);
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    expect(result.focusingErrors[0][0].message).toContain('timed out');
+  }, 5000); // 5 second timeout for the test itself
+
+  it('should respect custom timeout configuration with infinite loop (using Worker Threads)', async () => {
+    const infiniteLoopLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/malicious-infinite-loop-lens.json'), 'utf8')
+    );
+
+    // Use very short timeout (100ms)
+    const result = await applyLenses(sampleEpi, sampleIps, [infiniteLoopLens], { lensExecutionTimeout: 100 });
     
     expect(result).toBeDefined();
     expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBe(1);
     expect(result.focusingErrors[0].length).toBeGreaterThan(0);
-    expect(result.focusingErrors[0][0]).toContain('timeout');
-  }, 10000); // 10 second timeout for the test itself
-  */
+    expect(result.focusingErrors[0][0].message).toContain('timed out');
+    expect(result.focusingErrors[0][0].message).toContain('100ms');
+  }, 3000); // 3 second timeout for the test itself
+  
+  it('should timeout long-running async operations', async () => {
+    // Create a lens that uses async delay (which DOES respect timeouts)
+    const slowAsyncLensCode = `
+      return {
+        enhance: async function() {
+          // Simulate long async operation
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          return html;
+        }
+      };
+    `;
+    const slowAsyncLens = {
+      resourceType: 'Library',
+      id: 'slow-async-lens',
+      meta: { profile: ['http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens'] },
+      extension: [{ url: 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version', valueString: '0.0.4' }],
+      url: 'http://test.example/slow-async',
+      version: '1.0.0',
+      name: 'SlowAsyncLens',
+      status: 'active',
+      type: { coding: [{ code: 'logical-library' }] },
+      content: [{ contentType: 'application/javascript', data: Buffer.from(slowAsyncLensCode).toString('base64') }]
+    };
+
+    // Should timeout after 100ms (much less than the 5000ms delay)
+    const result = await applyLenses(sampleEpi, sampleIps, [slowAsyncLens], { lensExecutionTimeout: 100 });
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+    expect(result.focusingErrors.length).toBe(1);
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    expect(result.focusingErrors[0][0].message).toContain('timed out');
+  }, 3000);
+});
+
+describe('Configuration', () => {
+  const sampleEpi = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/epis/sample-epi-1.json'), 'utf8')
+  );
+  const sampleIps = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/ips/sample-ips-1.json'), 'utf8')
+  );
+  
+  it('should provide default configuration via getDefaultConfig', async () => {
+    const { getDefaultConfig } = await import('./executor');
+    const defaultConfig = getDefaultConfig();
+    
+    expect(defaultConfig).toBeDefined();
+    expect(defaultConfig.lensExecutionTimeout).toBe(1000);
+  });
+
+  it('should be backwards compatible (work without config parameter)', async () => {
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    // Call without config parameter
+    const result = await applyLenses(sampleEpi, sampleIps, [validLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+  });
+
+  it('should merge custom config with defaults', async () => {
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    // Call with custom timeout
+    const result = await applyLenses(sampleEpi, sampleIps, [validLens], { lensExecutionTimeout: 5000 });
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    // Should work fine with longer timeout
+  });
 });

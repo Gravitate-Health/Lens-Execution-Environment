@@ -108,10 +108,18 @@ const lens: Lens = {
 
 // Apply lenses and get enhanced ePI
 const result = await applyLenses(epi, ips, [lens]);
-// Apply lenses and get enhanced ePI
-const result = await applyLenses(epi, ips, [lens]);
 console.log(result.epi); // Enhanced ePI Bundle with modified sections
 console.log(result.focusingErrors); // Any errors that occurred during lens execution
+
+// Apply lenses with custom timeout configuration
+const resultWithTimeout = await applyLenses(epi, ips, [lens], {
+  lensExecutionTimeout: 2000 // 2 seconds per lens (default is 1000ms)
+});
+
+// Get default configuration values
+import { getDefaultConfig } from '@gravitate-health/lens-execution-environment';
+const defaultConfig = getDefaultConfig();
+console.log(defaultConfig.lensExecutionTimeout); // 1000
 ### CommonJS
 
 ```javascript
@@ -139,17 +147,32 @@ The ESM build can be imported directly in modern browsers:
 **Note:** For HTML parsing in browser environments, the library uses the native `DOMParser` API. In Node.js environments, it will attempt to use `jsdom` if available (installed as an optional dependency). If jsdom is not available, HTML parsing will fall back gracefully, returning the original sections unchanged.
 ### Types
 
-- **`IPS`**: International Patient Summary as a FHIR Bundle
-- **`PreprocessedEPI`**: Electronic Product Information as a FHIR Bundle with Composition
-- **`Lens`**: FHIR Library resource containing transformation code
-- **`LensExecutionResult`**: Result of executing a single lens
 - **`ApplyLensesResult`**: Result of applying all lenses (enhanced ePI + errors)
 - **`FocusingError`**: Error that occurred during lens execution
-- **`ExecutionOptions`**: Options for lens execution
+- **`LensExecutionObject`**: Interface for lens return value (enhance + optional explanation methods)
+- **`LensExecutionConfig`**: Configuration options for lens execution (timeout settings)
 
 ### Functions
 
-- **`applyLenses(epi, ips, lenses, options?)`**: Apply all lenses sequentially and return the enhanced ePI Bundle with modified content and focusing errors
+- **`applyLenses(epi, ips, lenses, config?)`**: Apply all lenses sequentially and return the enhanced ePI Bundle with modified content and focusing errors
+- **`getDefaultConfig()`**: Returns the default configuration object with all default values
+
+### Configuration
+
+```typescript
+interface LensExecutionConfig {
+  lensExecutionTimeout?: number; // Timeout in milliseconds (default: 1000)
+}
+
+// Get default configuration
+const defaultConfig = getDefaultConfig();
+// { lensExecutionTimeout: 1000 }
+
+// Use custom configuration
+const result = await applyLenses(epi, ips, [lens], {
+  lensExecutionTimeout: 5000 // 5 seconds
+});
+```
 
 ### Lens Function Interface
 
@@ -169,13 +192,41 @@ return {
 };
 ```
 
-### Execution Options
+## Security & Isolation
+
+### Worker Thread Architecture
+
+The LEE executes each lens in an isolated **Worker Thread** for maximum security and reliability:
+
+- **Memory Isolation**: Each lens runs in its own thread with separate memory space
+- **Timeout Enforcement**: Lenses are forcefully terminated if they exceed the configured timeout
+- **Protection Against Blocking Code**: Even synchronous infinite loops (`while(true)`) can be interrupted
+- **No Race Conditions**: Independent worker threads prevent concurrent access issues
+- **Automatic Cleanup**: Workers are terminated and garbage collected after execution
+
+### Timeout Behavior
+
+- **Default timeout**: 1000ms (1 second) per lens function invocation
+- **Configurable**: Can be adjusted via `LensExecutionConfig`
+- **Scope**: Applies to both `enhance()` and `explanation()` functions
+- **Error handling**: Timeout errors are captured in `focusingErrors` array, allowing other lenses to continue
 
 ```typescript
-interface ExecutionOptions {
-  timeout?: number;          // Timeout in ms (default: 5000)
-  continueOnError?: boolean; // Continue if a lens fails (default: true)
-}
+// Lens that takes too long will be terminated
+const slowLens = createLens(`
+  return {
+    enhance: async function() {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Will timeout
+      return html;
+    }
+  };
+`);
+
+const result = await applyLenses(epi, ips, [slowLens], {
+  lensExecutionTimeout: 1000 // Lens will be terminated after 1 second
+});
+
+console.log(result.focusingErrors); // Contains timeout error
 ```
 
 ## Development
@@ -205,9 +256,12 @@ npm run lint
 
 ```
 src/
-├── index.ts                     # Main entry point and exports
-├── types.ts                     # FHIR-compliant TypeScript interfaces
-└── LensExecutionEnvironment.ts  # Core lens execution logic
+├── index.ts           # Main entry point and exports
+├── types.ts           # TypeScript interfaces for LEE types
+├── executor.ts        # Core lens execution logic with Worker Thread orchestration
+├── executor.test.ts   # Comprehensive test suite (377 tests)
+├── lens-worker.js     # Isolated worker thread for lens execution
+└── Logger.ts          # Logging utilities
 ```
 
 ## Publishing

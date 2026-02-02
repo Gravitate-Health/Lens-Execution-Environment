@@ -18,7 +18,8 @@ export {
   FocusingError,
   ApplyLensesResult,
   LensExecutionObject,
+  LensExecutionConfig,
 } from './types';
 
-// Export main lens execution function
-export { applyLenses } from './executor';
+// Export main lens execution function and configuration
+export { applyLenses, getDefaultConfig } from './executor';

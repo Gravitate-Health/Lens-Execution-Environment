@@ -21,12 +21,18 @@ The FHIR Implementation Guide for LEE and Lenses is available at:
 
 ### II. Critical Developer Workflows
 
-1.  **Build and Testing:** Standard TypeScript/LoopBack 4 practices apply:
-    *   **Build:** `npm run build` (standard build) or `npm run rebuild` (force full clean build).
+1.  **Build and Testing:** Standard TypeScript practices apply:
+    *   **Build:** `npm run build` (builds CJS, ESM, types, and copies worker file).
     *   **Style Fixes:** `npm run lint:fix`.
-    *   **Run Tests:** `npm test`.
+    *   **Run Tests:** `npm test` (377 comprehensive tests including malicious lens handling).
 
 2.  **Lens Compilation:** The actual lens code (JavaScript) must be converted into a FHIR resource (`Lens Profile`) for storage and distribution. Use the **FHIR lens bundler** tool to encode JavaScript into **Base64** format for the `content` field of the FHIR attachment. The LEE will decode (recode as UTF-8) and execute this code at runtime.
+
+3.  **Lens Execution Architecture:** The LEE uses **Worker Threads** for secure, isolated lens execution:
+    *   Each lens runs in a separate Worker Thread (`src/lens-worker.js`).
+    *   Workers are terminated after timeout (default 1000ms, configurable via `LensExecutionConfig`).
+    *   This architecture protects against malicious code, infinite loops, and blocking operations.
+    *   Worker cleanup is automatic (terminate + garbage collection).
 
 ### III. Project-Specific Conventions & Patterns
 
@@ -40,8 +46,21 @@ The FHIR Implementation Guide for LEE and Lenses is available at:
     *   **Supplementary Content:** Use `addNewContent()` to inject HTML tags (e.g., for videos, hyperlinks, or glossary hovers).
     *   **Priority Rule:** When multiple lenses apply changes, the **largest attention detail is prioritized** (i.e., `highlight` over `collapse`).
 
+3.  **Security & Timeout Configuration:**
+    *   **Default Timeout:** 1000ms (1 second) per lens function invocation (both `enhance()` and `explanation()`).
+    *   **Configuration:** Use `LensExecutionConfig` interface to customize timeout: `applyLenses(epi, ips, lenses, { lensExecutionTimeout: 2000 })`.
+    *   **Defaults Retrieval:** Call `getDefaultConfig()` to get default configuration values.
+    *   **Worker Thread Isolation:** Each lens executes in an isolated Worker Thread for security and timeout enforcement.
+    *   **Error Handling:** Timeout and execution errors are captured in `focusingErrors` array without crashing the entire process.
+    *   **Protection:** Worker Threads protect against infinite loops, blocking code, and malicious operations.
+
 ### IV. Key Files/Directories
 
-*   **Lens Examples:** `src/lenses` (e.g., in `Gravitate-Health/lens-selector-example`).
-*   **Deployment Configuration (FM Discovery):** Kubernetes deployments (e.g., `kubernetes-yaml/001_lens-selector-example-service.yaml`) must include the label `eu.gravitate-health.fosps.focusing: "true"` for the Focusing Manager to discover them.
+*   **Core Execution:** `src/executor.ts` - Main lens execution logic with Worker Thread orchestration.
+*   **Worker Thread:** `src/lens-worker.js` - Isolated JavaScript worker for lens execution (plain JS to avoid module issues).
+*   **Type Definitions:** `src/types.ts` - TypeScript interfaces including `LensExecutionConfig` and `ApplyLensesResult`.
+*   **Test Suite:** `src/executor.test.ts` - 377 comprehensive tests including malicious lens handling and timeout verification.
+*   **Test Data:** `test-data/lenses/malicious-*.json` - Test lenses for error handling (throws, syntax errors, infinite loops, etc.).
+*   **Lens Examples:** External repository `Gravitate-Health/lens-selector-example`.
+*   **Deployment Configuration (FM Discovery):** Kubernetes deployments must include the label `eu.gravitate-health.fosps.focusing: "true"` for the Focusing Manager to discover them.
 *   **API Specification:** Refer to the external OAS Swagger API for the Focusing Manager interfaces: `https://fosps.gravitatehealth.eu/swagger-fosps/?urls.primaryName=Focusing%20Manager`.
