@@ -153,9 +153,9 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         let explanation = ""
         try {
             // Create enhance function from lens with error protection
-            let lensFunction: Function;
+            let lensFunction: (epi: any, ips: any, pv: any, html: any) => any;
             try {
-                lensFunction = new Function("epi, ips, pv, html", lensCode)
+                lensFunction = new Function("epi, ips, pv, html", lensCode) as (epi: any, ips: any, pv: any, html: any) => any
             } catch (functionCreationError: any) {
                 Logger.logError("executor.ts", "applyLensToSections", `Failed to create lens function for ${lensIdentifier}: ${functionCreationError?.message || String(functionCreationError)}`);
                 throw new Error(`Lens function creation failed: ${functionCreationError?.message || String(functionCreationError)}`);
