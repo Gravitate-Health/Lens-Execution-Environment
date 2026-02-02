@@ -91,7 +91,17 @@ Follow these steps to release a new version of the LEE package:
     *   Includes integration tests, malicious lens handling, timeout verification
     *   Test duration: ~130-135 seconds
 
-4.  **Version Bump:** Update package version based on semver
+4.  **Security Audit:** Check for known vulnerabilities in dependencies
+    ```bash
+    npm audit
+    ```
+    *   Review any vulnerabilities found
+    *   If fixable issues exist, run `npm audit fix` to automatically update dependencies
+    *   If breaking changes are required, run `npm audit fix --force` (use with caution)
+    *   Re-run tests after fixing: `npm test`
+    *   Critical/High severity issues should be resolved before release
+
+5.  **Version Bump:** Update package version based on semver
     ```bash
     npm version patch   # Bug fixes (0.0.4 → 0.0.5)
     npm version minor   # New features, backwards compatible (0.0.4 → 0.1.0)
@@ -116,6 +126,9 @@ Follow these steps to release a new version of the LEE package:
     *   Pushes the version tag (triggers any CI/CD if configured)
 
 7.  **NPM Login:** Ensure authentication is ready (if not already logged in)
+    *   Pushes the version tag (triggers any CI/CD if configured)
+
+7.  **NPM Login:** Ensure authentication is ready (if not already logged in)
     ```bash
     npm login
     ```
@@ -132,12 +145,13 @@ Follow these steps to release a new version of the LEE package:
 
 **Quick Release Command (after manual verification):**
 ```bash
-npm run lint && npm run build && npm test && npm version patch && git push && git push --tags && npm publish
+npm run lint && npm run build && npm test && npm audit && npm version patch && git push && git push --tags && npm publish
 ```
 
 **Important Notes:**
--   Always run lint, build, and test before version bump
+-   Always run lint, build, test, and audit before version bump
 -   Use semantic versioning: major.minor.patch
+-   Security audit should be addressed before release (especially Critical/High severity issues)
 -   Never force push or delete published versions
 -   Version bump creates commit + tag automatically
 -   The `prepublishOnly` script ensures fresh build before publish
