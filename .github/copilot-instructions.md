@@ -54,6 +54,13 @@ The FHIR Implementation Guide for LEE and Lenses is available at:
     *   **Error Handling:** Timeout and execution errors are captured in `focusingErrors` array without crashing the entire process.
     *   **Protection:** Worker Threads protect against infinite loops, blocking code, and malicious operations.
 
+4.  **Logging Customization:**
+    *   **Default:** All logs go to console (LEE logs + lens logs).
+    *   **LEE Logs:** Override via `LensExecutionConfig.logging.leeLogger`.
+    *   **Lens Logs:** Override via `LensExecutionConfig.logging.lensLogger` or per-lens `lensLoggerFactory(lensId)`.
+    *   **Disable Lens Logs:** Set `LensExecutionConfig.logging.disableLensLogging = true`.
+    *   **Log Entry Shape:** Use `LogEntry` for structured logs; `source` is `LEE` or `LENS`, `lensId` is set for lens logs.
+
 ### IV. Key Files/Directories
 
 *   **Core Execution:** `src/executor.ts` - Main lens execution logic with Worker Thread orchestration.

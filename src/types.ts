@@ -38,4 +38,58 @@ export interface LensExecutionConfig {
    * @default 1000 (1 second)
    */
   lensExecutionTimeout?: number;
+
+  /**
+   * Optional logging configuration for LEE and lens execution.
+   * If omitted, logging defaults to console output.
+   */
+  logging?: LoggingOptions;
+}
+
+/**
+ * Log levels used by the LEE and lens execution.
+ */
+export type LogLevel = "ERROR" | "DEBUG" | "WARN" | "FATAL" | "INFO";
+
+/**
+ * Log entry structure passed to configured log sinks.
+ */
+export interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  file: string;
+  task: string;
+  message: any;
+  source: "LEE" | "LENS";
+  lensId?: string;
+}
+
+/**
+ * Log sink function signature.
+ */
+export type LogSink = (entry: LogEntry) => void;
+
+/**
+ * Logging configuration options.
+ */
+export interface LoggingOptions {
+  /**
+   * Custom logger for LEE logs. Defaults to console output.
+   */
+  leeLogger?: LogSink;
+
+  /**
+   * Custom logger for lens logs. Used when lensLoggerFactory is not provided.
+   */
+  lensLogger?: LogSink;
+
+  /**
+   * Factory for per-lens loggers (e.g., per-lens file).
+   */
+  lensLoggerFactory?: (lensId: string) => LogSink;
+
+  /**
+   * Disable lens logging entirely.
+   */
+  disableLensLogging?: boolean;
 }

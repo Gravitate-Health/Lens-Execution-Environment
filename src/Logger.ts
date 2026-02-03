@@ -1,9 +1,43 @@
+import { LogEntry, LogLevel, LogSink } from "./types";
+
+const defaultSink: LogSink = (entry: LogEntry) => {
+    console.log(`${entry.timestamp} - ${entry.level} - ${entry.file} - ${entry.task} - ${entry.message}`);
+};
+
 export abstract class Logger {
+    private static sink?: LogSink;
+
+    /**
+     * Set a custom log sink for LEE logs.
+     * If not set, logs go to console.
+     */
+    public static setSink(sink?: LogSink) {
+        Logger.sink = sink;
+    }
+
+    /**
+     * Get the currently configured log sink.
+     */
+    public static getSink(): LogSink | undefined {
+        return Logger.sink;
+    }
+
     /**
      * Core logging method that outputs formatted log messages with timestamp and level
      */
-    public static log(file: string, log_level: string, task: string, message: any) {
-        console.log(`${new Date().toISOString()} - ${log_level} - ${file} - ${task} - ${message}`);
+    public static log(file: string, log_level: LogLevel, task: string, message: any, source: "LEE" | "LENS" = "LEE", lensId?: string) {
+        const entry: LogEntry = {
+            timestamp: new Date().toISOString(),
+            level: log_level,
+            file,
+            task,
+            message,
+            source,
+            lensId
+        };
+
+        const sink = Logger.sink || defaultSink;
+        sink(entry);
     }
 
     /**

@@ -150,7 +150,9 @@ The ESM build can be imported directly in modern browsers:
 - **`ApplyLensesResult`**: Result of applying all lenses (enhanced ePI + errors)
 - **`FocusingError`**: Error that occurred during lens execution
 - **`LensExecutionObject`**: Interface for lens return value (enhance + optional explanation methods)
-- **`LensExecutionConfig`**: Configuration options for lens execution (timeout settings)
+- **`LensExecutionConfig`**: Configuration options for lens execution (timeout + logging)
+- **`LoggingOptions`**: Optional LEE and lens logging configuration
+- **`LogEntry`**: Structured log entry passed to log sinks
 
 ### Functions
 
@@ -162,6 +164,7 @@ The ESM build can be imported directly in modern browsers:
 ```typescript
 interface LensExecutionConfig {
   lensExecutionTimeout?: number; // Timeout in milliseconds (default: 1000)
+  logging?: LoggingOptions; // Optional LEE + lens logging configuration
 }
 
 // Get default configuration
@@ -171,6 +174,38 @@ const defaultConfig = getDefaultConfig();
 // Use custom configuration
 const result = await applyLenses(epi, ips, [lens], {
   lensExecutionTimeout: 5000 // 5 seconds
+});
+```
+
+### Logging
+
+By default, all logs go to `console`. You can override LEE logs, lens logs, or both.
+
+```typescript
+import { applyLenses } from '@gravitate-health/lens-execution-environment';
+
+const result = await applyLenses(epi, ips, [lens], {
+  logging: {
+    // Override LEE logging
+    leeLogger: (entry) => {
+      // entry.source === "LEE"
+      customLeeLogger(entry);
+    },
+
+    // Override lens logging globally
+    lensLogger: (entry) => {
+      // entry.source === "LENS" and entry.lensId is set
+      customLensLogger(entry);
+    },
+
+    // Or: per-lens loggers (e.g., per-lens files)
+    lensLoggerFactory: (lensId) => (entry) => {
+      customPerLensLogger(lensId, entry);
+    },
+
+    // Optional: disable lens logging entirely
+    disableLensLogging: false
+  }
 });
 ```
 

@@ -6,7 +6,31 @@
  */
 const { parentPort, workerData } = require('worker_threads');
 
+const safeStringify = (value) => {
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch (_error) {
+    return String(value);
+  }
+};
+
+const sendLog = (level, args) => {
+  if (!parentPort) return;
+  const message = Array.isArray(args) ? args.map(safeStringify).join(' ') : safeStringify(args);
+  parentPort.postMessage({ type: 'log', level, message });
+};
+
+const overrideConsole = () => {
+  console.log = (...args) => sendLog('INFO', args);
+  console.info = (...args) => sendLog('INFO', args);
+  console.warn = (...args) => sendLog('WARN', args);
+  console.error = (...args) => sendLog('ERROR', args);
+  console.debug = (...args) => sendLog('DEBUG', args);
+};
+
 try {
+  overrideConsole();
   const { lensCode, epi, ips, html } = workerData;
   
   // Create the lens function from code

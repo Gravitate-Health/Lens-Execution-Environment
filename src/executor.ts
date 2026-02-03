@@ -1,6 +1,6 @@
 import { Logger } from "./Logger";
 import JSDOM from "jsdom";
-import { LensExecutionConfig, ApplyLensesResult } from "./types";
+import { LensExecutionConfig, ApplyLensesResult, LogEntry, LogLevel, LogSink } from "./types";
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 
@@ -20,7 +20,28 @@ const defaultExplanation: { [key in Language]: string } = {
 export const getDefaultConfig = (): Required<LensExecutionConfig> => {
     return {
         lensExecutionTimeout: 1000, // 1 second default
+        logging: {},
     };
+};
+
+const defaultLensLogSink = (lensId: string): LogSink => {
+    return (entry: LogEntry) => {
+        console.log(`${entry.timestamp} - ${entry.level} - ${entry.file} - ${entry.task} - ${entry.message}`);
+    };
+};
+
+const resolveLensLogSink = (config: Required<LensExecutionConfig>, lensId: string): LogSink | undefined => {
+    const logging = config.logging;
+    if (logging?.disableLensLogging) {
+        return undefined;
+    }
+    if (logging?.lensLoggerFactory) {
+        return logging.lensLoggerFactory(lensId);
+    }
+    if (logging?.lensLogger) {
+        return logging.lensLogger;
+    }
+    return defaultLensLogSink(lensId);
 };
 
 /*
@@ -38,6 +59,14 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], conf
             ...getDefaultConfig(),
             ...config
         };
+
+        const previousLeeLogger = Logger.getSink();
+        const hasCustomLeeLogger = !!effectiveConfig.logging?.leeLogger;
+        if (hasCustomLeeLogger) {
+            Logger.setSink(effectiveConfig.logging?.leeLogger);
+        }
+
+        try {
         
         Logger.logInfo("executor.ts", "applyLenses", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
 
@@ -96,6 +125,11 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], conf
     epi = writeLeaflet(epi, leafletSectionList)
 
     return {epi, focusingErrors}
+        } finally {
+            if (hasCustomLeeLogger) {
+                Logger.setSink(previousLeeLogger);
+            }
+        }
 }
 
 /**
@@ -116,7 +150,8 @@ const executeLensInWorker = async (
     ips: any,
     html: string,
     timeoutMs: number,
-    _lensIdentifier: string
+    _lensIdentifier: string,
+    lensLogSink?: LogSink
 ): Promise<{ enhancedHtml: string; explanation: string }> => {
     return new Promise((resolve, reject) => {
         // Use the plain JavaScript worker file (lens-worker.js)
@@ -139,7 +174,22 @@ const executeLensInWorker = async (
         }, timeoutMs);
         
         // Handle worker messages
-        worker.on('message', (message: { success: boolean; result?: any; error?: string }) => {
+        worker.on('message', (message: { type?: "log"; level?: LogLevel; message?: any; success?: boolean; result?: any; error?: string }) => {
+            if (message?.type === "log") {
+                if (lensLogSink) {
+                    const entry: LogEntry = {
+                        timestamp: new Date().toISOString(),
+                        level: message.level || "INFO",
+                        file: `lens:${_lensIdentifier}`,
+                        task: "console",
+                        message: message.message,
+                        source: "LENS",
+                        lensId: _lensIdentifier
+                    };
+                    lensLogSink(entry);
+                }
+                return;
+            }
             if (!isSettled) {
                 isSettled = true;
                 clearTimeout(timeout);
@@ -249,6 +299,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
         try {
+            const lensLogSink = resolveLensLogSink(config, lensIdentifier)
             // Execute lens in isolated Worker Thread with timeout
             const result = await executeLensInWorker(
                 lensCode,
@@ -256,7 +307,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
                 ips,
                 leafletHTMLString,
                 config.lensExecutionTimeout,
-                lensIdentifier
+                lensIdentifier,
+                lensLogSink
             );
             
             const enhancedHtml = result.enhancedHtml;
