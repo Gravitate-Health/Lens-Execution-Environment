@@ -120,10 +120,7 @@ const resultWithTimeout = await applyLenses(epi, ips, [lens], {
 import { getDefaultConfig } from '@gravitate-health/lens-execution-environment';
 const defaultConfig = getDefaultConfig();
 console.log(defaultConfig.lensExecutionTimeout); // 1000
-### CommonJS
-
-```javascript
-const { applyLenses, getProcessedHtml } = require('@gravitate-health/lens-execution-environment');
+```
 
 ### CommonJS
 
@@ -131,6 +128,8 @@ const { applyLenses, getProcessedHtml } = require('@gravitate-health/lens-execut
 const { applyLenses } = require('@gravitate-health/lens-execution-environment');
 
 // Same usage as above (with await inside async function)
+```
+
 ### Browser / Webview
 
 The ESM build can be imported directly in modern browsers:
