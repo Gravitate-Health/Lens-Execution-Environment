@@ -1,6 +1,6 @@
 {
   "name": "@gravitate-health/lens-execution-environment",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "The LEE is the component that safely applies a set of lenses to a preprocessed ePI given an IPS.",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
