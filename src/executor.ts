@@ -24,7 +24,7 @@ export const getDefaultConfig = (): Required<LensExecutionConfig> => {
     };
 };
 
-const defaultLensLogSink = (lensId: string): LogSink => {
+const defaultLensLogSink = (_lensId: string): LogSink => {
     return (entry: LogEntry) => {
         console.log(`${entry.timestamp} - ${entry.level} - ${entry.file} - ${entry.task} - ${entry.message}`);
     };
