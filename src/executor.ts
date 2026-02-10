@@ -50,10 +50,11 @@ const resolveLensLogSink = (config: Required<LensExecutionConfig>, lensId: strin
     @param epi The FHIR ePI resource to enhance (should be preprocessed).
     @param ips The FHIR IPS resource containing patient information.
     @param completeLenses An array of lens Library resources to apply.
+    @param pv Optional persona vector (FHIR bundle with additional patient information).
     @param config Optional configuration for the LEE. Uses defaults if not provided.
     @returns An object containing the enhanced ePI and any focusing errors.
 */
-export const applyLenses = async (epi:any, ips: any, completeLenses: any[], config?: LensExecutionConfig): Promise<ApplyLensesResult> => {
+export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?: any, config?: LensExecutionConfig): Promise<ApplyLensesResult> => {
         // Merge provided config with defaults
         const effectiveConfig: Required<LensExecutionConfig> = {
             ...getDefaultConfig(),
@@ -77,15 +78,12 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], conf
     // Iterate lenses
     for (const i in completeLenses) {
         const lens = completeLenses[i]
-
-        // If there are lenses, we can already mark the ePI as enhanced
-        epi = setCategoryCode(epi, "E", "Enhanced")
         
         const lensIdentifier = getLensIdenfier(completeLenses[i])
         const epiLanguage = getlanguage(epi)
         // const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
-        const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips, effectiveConfig)
+        const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips, pv, effectiveConfig)
         focusingErrors.push(lensApplication.focusingErrors)
         const lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
         if (lensApplied) {
@@ -122,6 +120,10 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], conf
         }
 
     }
+    // If there are lenses, mark the ePI as enhanced
+    if (completeLenses && completeLenses.length > 0) {
+        epi = setCategoryCode(epi, "E", "Enhanced")
+    }
     epi = writeLeaflet(epi, leafletSectionList)
 
     return {epi, focusingErrors}
@@ -148,6 +150,7 @@ const executeLensInWorker = async (
     lensCode: string,
     epi: any,
     ips: any,
+    pv: any,
     html: string,
     timeoutMs: number,
     _lensIdentifier: string,
@@ -159,7 +162,7 @@ const executeLensInWorker = async (
         const workerPath = path.join(__dirname, 'lens-worker.js');
         
         const worker = new Worker(workerPath, {
-            workerData: { lensCode, epi, ips, html }
+            workerData: { lensCode, epi, ips, pv, html }
         });
         
         let isSettled = false;
@@ -225,7 +228,7 @@ const executeLensInWorker = async (
     });
 };
 
-const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any, config: Required<LensExecutionConfig>) => {
+const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any, pv: any, config: Required<LensExecutionConfig>) => {
     const lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
     let lensCode = ""
     const focusingErrors: { message: string; lensName: string; }[] = []
@@ -305,6 +308,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
                 lensCode,
                 epi,
                 ips,
+                pv,
                 leafletHTMLString,
                 config.lensExecutionTimeout,
                 lensIdentifier,

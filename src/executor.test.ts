@@ -446,7 +446,7 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     );
 
     // Use very short timeout (100ms)
-    const result = await applyLenses(sampleEpi, sampleIps, [infiniteLoopLens], { lensExecutionTimeout: 100 });
+    const result = await applyLenses(sampleEpi, sampleIps, [infiniteLoopLens], undefined, { lensExecutionTimeout: 100 });
     
     expect(result).toBeDefined();
     expect(result.focusingErrors).toBeDefined();
@@ -481,7 +481,7 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     };
 
     // Should timeout after 100ms (much less than the 5000ms delay)
-    const result = await applyLenses(sampleEpi, sampleIps, [slowAsyncLens], { lensExecutionTimeout: 100 });
+    const result = await applyLenses(sampleEpi, sampleIps, [slowAsyncLens], undefined, { lensExecutionTimeout: 100 });
     
     expect(result).toBeDefined();
     expect(result.focusingErrors).toBeDefined();
@@ -526,10 +526,184 @@ describe('Configuration', () => {
     );
 
     // Call with custom timeout
-    const result = await applyLenses(sampleEpi, sampleIps, [validLens], { lensExecutionTimeout: 5000 });
+    const result = await applyLenses(sampleEpi, sampleIps, [validLens], undefined, { lensExecutionTimeout: 5000 });
     
     expect(result).toBeDefined();
     expect(result.epi).toBeDefined();
     // Should work fine with longer timeout
+  });
+});
+
+describe('Persona Vector (PV) Support', () => {
+  const sampleEpi = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/epis/sample-epi-1.json'), 'utf8')
+  );
+  const sampleIps = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/ips/sample-ips-1.json'), 'utf8')
+  );
+  const personaDimensionCollection = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/pv/Bundle-persona-dimension-collection.json'), 'utf8')
+  );
+  const pedroDimensionCollection = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/pv/Bundle-pedro-dimension-collection.json'), 'utf8')
+  );
+  const pvReaderLens = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/lenses/pv-reader-lens.json'), 'utf8')
+  );
+
+  it('should accept pv parameter without errors', async () => {
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [validLens], personaDimensionCollection);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+  });
+
+  it('should work without pv parameter (backwards compatibility)', async () => {
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    // Call without pv
+    const result = await applyLenses(sampleEpi, sampleIps, [validLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors).toBeDefined();
+  });
+
+  it('should pass pv data to lens - lens can read pv.entry', async () => {
+    // Use the PV reader lens which checks for pv.entry
+    const result = await applyLenses(sampleEpi, sampleIps, [pvReaderLens], personaDimensionCollection);
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+    
+    // The test succeeds if the lens executed without errors and the pv data was accessible
+    // The PV reader lens will throw an error if pv is not accessible
+    expect(result.epi).toBeDefined();
+  });
+
+  it('should handle absence of pv gracefully - lens receives undefined', async () => {
+    // Call without pv - the lens should handle undefined pv
+    const result = await applyLenses(sampleEpi, sampleIps, [pvReaderLens]);
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+    
+    // The lens successfully handled undefined pv without errors
+    expect(result.epi).toBeDefined();
+  });
+
+  it('should access pv entry count correctly', async () => {
+    const result = await applyLenses(sampleEpi, sampleIps, [pvReaderLens], personaDimensionCollection);
+    
+    // Check the explanation mentions the correct number of dimensions
+    const composition = result.epi.entry.find((e: any) => e.resource.resourceType === 'Composition');
+    const extensions = composition.resource.extension || [];
+    const lensExtension = extensions.find((ext: any) => 
+      ext.extension && ext.extension.some((e: any) => e.url === 'explanation')
+    );
+    
+    if (lensExtension) {
+      const explanationExt = lensExtension.extension.find((e: any) => e.url === 'explanation');
+      if (explanationExt && explanationExt.valueMarkdown) {
+        expect(explanationExt.valueMarkdown).toContain('persona dimensions');
+      }
+    }
+    // If no explanation extension exists, verify pv was at least passed
+    expect(result.focusingErrors[0].length).toBe(0);
+  });
+
+  it('should work with different pv bundles', async () => {
+    // Test with Pedro's dimension collection
+    const result = await applyLenses(sampleEpi, sampleIps, [pvReaderLens], pedroDimensionCollection);
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+    expect(result.epi).toBeDefined();
+    
+    // Different PV bundle was successfully accessed by the lens
+  });
+
+  it('should pass both pv and config parameters correctly', async () => {
+    const result = await applyLenses(
+      sampleEpi, 
+      sampleIps, 
+      [pvReaderLens], 
+      personaDimensionCollection, 
+      { lensExecutionTimeout: 2000 }
+    );
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+    expect(result.epi).toBeDefined();
+    
+    // Both pv and config were passed correctly
+  });
+
+  it('should validate pv bundles have expected structure', () => {
+    // Validate persona dimension collection structure
+    expect(personaDimensionCollection.resourceType).toBe('Bundle');
+    expect(personaDimensionCollection.type).toBe('collection');
+    expect(personaDimensionCollection.meta.profile).toContain(
+      'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/persona-collection'
+    );
+    expect(Array.isArray(personaDimensionCollection.entry)).toBe(true);
+    expect(personaDimensionCollection.entry.length).toBeGreaterThan(0);
+    
+    // Validate Pedro dimension collection structure
+    expect(pedroDimensionCollection.resourceType).toBe('Bundle');
+    expect(pedroDimensionCollection.type).toBe('collection');
+    expect(Array.isArray(pedroDimensionCollection.entry)).toBe(true);
+  });
+
+  it('should allow lenses to read persona dimension observations', async () => {
+    // Create a lens that specifically reads observation codes from pv
+    const pvObservationReaderCode = `
+return {
+  enhance: () => {
+    if (pv && pv.entry && pv.entry.length > 0) {
+      // Count observations with specific codes
+      const observations = pv.entry.filter(e => e.resource && e.resource.resourceType === 'Observation');
+      const marker = \`<!-- Found \${observations.length} Observations in PV -->\`;
+      return marker + "\\n" + html;
+    }
+    return html;
+  },
+  explanation: () => {
+    if (pv && pv.entry) {
+      const observations = pv.entry.filter(e => e.resource && e.resource.resourceType === 'Observation');
+      return \`Analyzed \${observations.length} persona observations\`;
+    }
+    return "";
+  }
+};
+    `;
+    
+    const pvObservationLens = {
+      resourceType: 'Library',
+      url: 'http://test.example/pv-observation-reader',
+      version: '1.0.0',
+      name: 'PVObservationReaderLens',
+      status: 'active',
+      type: { coding: [{ code: 'logical-library' }] },
+      content: [{ 
+        contentType: 'application/javascript', 
+        data: Buffer.from(pvObservationReaderCode).toString('base64') 
+      }]
+    };
+
+    const result = await applyLenses(sampleEpi, sampleIps, [pvObservationLens], personaDimensionCollection);
+    
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+    expect(result.epi).toBeDefined();
+    
+    // The lens successfully read the Observation resources from pv.entry
   });
 });

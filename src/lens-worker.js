@@ -31,13 +31,13 @@ const overrideConsole = () => {
 
 try {
   overrideConsole();
-  const { lensCode, epi, ips, html } = workerData;
+  const { lensCode, epi, ips, pv, html } = workerData;
   
   // Create the lens function from code
   const lensFunction = new Function("epi, ips, pv, html", lensCode);
   
   // Execute the lens function to get the result object
-  const resObject = lensFunction(epi, ips, {}, html);
+  const resObject = lensFunction(epi, ips, pv, html);
   
   if (!resObject || typeof resObject !== 'object') {
     throw new Error(`Lens function must return an object, received: ${typeof resObject}`);

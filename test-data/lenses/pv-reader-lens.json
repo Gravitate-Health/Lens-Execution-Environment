@@ -1,0 +1,23 @@
+{
+  "resourceType": "Library",
+  "id": "pv-reader-lens",
+  "url": "http://test.example/pv-reader",
+  "version": "1.0.0",
+  "name": "PVReaderLens",
+  "title": "Persona Vector Reader Test Lens",
+  "status": "active",
+  "type": {
+    "coding": [
+      {
+        "code": "logical-library"
+      }
+    ]
+  },
+  "description": "A test lens that reads and uses persona vector (pv) data",
+  "content": [
+    {
+      "contentType": "application/javascript",
+      "data": "cmV0dXJuIHsKICBlbmhhbmNlOiAoKSA9PiB7CiAgICAvLyBDaGVjayBpZiBwdiBleGlzdHMgYW5kIGhhcyBkYXRhCiAgICBpZiAocHYgJiYgcHYuZW50cnkgJiYgcHYuZW50cnkubGVuZ3RoID4gMCkgewogICAgICAvLyBQViBkYXRhIGV4aXN0cywgYWRkIGEgY29tbWVudCB0byB0aGUgSFRNTCB0byBpbmRpY2F0ZSBpdCB3YXMgcmVhZAogICAgICBjb25zdCBwdk1hcmtlciA9IGA8IS0tIFBWIERhdGEgUmVhZDogZm91bmQgJHtwdi5lbnRyeS5sZW5ndGh9IHBlcnNvbmEgZGltZW5zaW9ucyAtLT5gOwogICAgICByZXR1cm4gcHZNYXJrZXIgKyAiXG4iICsgaHRtbDsKICAgIH0gZWxzZSB7CiAgICAgIC8vIE5vIFBWIGRhdGEsIGFkZCBhIGRpZmZlcmVudCBjb21tZW50CiAgICAgIGNvbnN0IG5vUHZNYXJrZXIgPSBgPCEtLSBObyBQViBEYXRhIFByb3ZpZGVkIC0tPmA7CiAgICAgIHJldHVybiBub1B2TWFya2VyICsgIlxuIiArIGh0bWw7CiAgICB9CiAgfSwKICBleHBsYW5hdGlvbjogKCkgPT4gewogICAgaWYgKHB2ICYmIHB2LmVudHJ5ICYmIHB2LmVudHJ5Lmxlbmd0aCA+IDApIHsKICAgICAgcmV0dXJuIGBUaGlzIGNvbnRlbnQgaGFzIGJlZW4gZW5oYW5jZWQgYmFzZWQgb24gJHtwdi5lbnRyeS5sZW5ndGh9IHBlcnNvbmEgZGltZW5zaW9ucy5gOwogICAgfSBlbHNlIHsKICAgICAgcmV0dXJuICJUaGlzIGNvbnRlbnQgd2FzIHByb2Nlc3NlZCB3aXRob3V0IHBlcnNvbmEgdmVjdG9yIGRhdGEuIjsKICAgIH0KICB9Cn07Cg=="
+    }
+  ]
+}
