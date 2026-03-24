@@ -4,15 +4,6 @@ import { LensExecutionConfig, ApplyLensesResult, LogEntry, LogLevel, LogSink } f
 import { Worker } from 'worker_threads';
 import * as path from 'path';
 
-type Language = "en" | "es" | "pt" | "da";
-
-const defaultExplanation: { [key in Language]: string } = {
-    "en": "This section was highlighted because it is relevant to your health.",
-    "es": "Esta sección fue resaltada porque es relevante para su salud.",
-    "pt": "Esta seção foi destacada porque é relevante para a sua saúde.",
-    "da": "Denne sektion blev fremhævet, fordi den er relevant for din sundhed."
-};
-
 /**
  * Get the default configuration for the Lens Execution Environment.
  * @returns The default LensExecutionConfig with all default values.
@@ -80,7 +71,6 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
         const lens = completeLenses[i]
         
         const lensIdentifier = getLensIdenfier(completeLenses[i])
-        const epiLanguage = getlanguage(epi)
         // const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
         const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips, pv, effectiveConfig)
@@ -88,10 +78,9 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
         const lensApplied = !lensApplication.focusingErrors || lensApplication.focusingErrors.length == 0
         if (lensApplied) {
             leafletSectionList = lensApplication.leafletSectionList
-            const validLanguage = (epiLanguage as string) in defaultExplanation ? epiLanguage as Language : "en";
-            const explanationText = lensApplication.explanation || defaultExplanation[validLanguage];
+            const explanationText = lensApplication.explanation;
             let epiExtensions = []
-            if (explanationText != undefined && explanationText != "") {
+            if (explanationText != null && explanationText != undefined && explanationText != "") {
                 epiExtensions = getExtensions(epi)
                 epiExtensions.push({
                     "extension": [
@@ -546,12 +535,6 @@ const setCategoryCode = (epi: any, code: string, display: string) => {
     
     return epi;
 }
-
-const getlanguage = (epi: any) => {
-    const composition = findResourceByType(epi, "Composition");
-    return composition.language || null;
-}
-
 
 const getExtensions = (epi: any) => {
     const composition = findResourceByType(epi, "Composition");
