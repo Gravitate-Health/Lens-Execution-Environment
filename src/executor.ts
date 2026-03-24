@@ -516,7 +516,7 @@ const getLensIdentifier = (lens: any) => {
         }
 
         return firstIdentifierValue
-    } catch (error) {
+    } catch {
         Logger.logError("executor.ts", "getLensIdentifier", "Could not extract lens identifier (mandatory) from Library resource");
     }
     return null;
