@@ -1,6 +1,11 @@
 {
   "resourceType": "Library",
   "id": "malicious-modifies-input",
+  "identifier": [
+    {
+      "value": "malicious-modifies-input"
+    }
+  ],
   "meta": {
     "profile": [
       "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens"

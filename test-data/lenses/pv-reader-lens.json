@@ -1,6 +1,11 @@
 {
   "resourceType": "Library",
   "id": "pv-reader-lens",
+  "identifier": [
+    {
+      "value": "pv-reader-lens"
+    }
+  ],
   "url": "http://test.example/pv-reader",
   "version": "1.0.0",
   "name": "PVReaderLens",

@@ -206,7 +206,11 @@ describe('Lens Execution Environment - Edge Cases', () => {
     });
 
     it('should handle invalid lens gracefully', async () => {
-      const invalidLens = { resourceType: 'Library', content: [{ data: 'aW52YWxpZA==' }] }; // "invalid" in base64
+      const invalidLens = {
+        resourceType: 'Library',
+        identifier: [{ value: 'invalid-lens' }],
+        content: [{ data: 'aW52YWxpZA==' }]
+      }; // "invalid" in base64
       
       // Invalid lens should be captured in errors, not throw
       const result = await applyLenses(sampleEpi, sampleIps, [invalidLens]);
@@ -259,6 +263,10 @@ describe('Lens Execution Environment - Data Validation', () => {
     lenses.forEach(({ name, data }) => {
       it(`${name} should be a valid FHIR Library resource`, () => {
         expect(data.resourceType).toBe('Library');
+        expect(Array.isArray(data.identifier)).toBe(true);
+        expect(data.identifier.length).toBeGreaterThan(0);
+        expect(typeof data.identifier[0].value).toBe('string');
+        expect(data.identifier[0].value.length).toBeGreaterThan(0);
         expect(data.content).toBeDefined();
         expect(Array.isArray(data.content)).toBe(true);
       });
@@ -470,6 +478,7 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     const slowAsyncLens = {
       resourceType: 'Library',
       id: 'slow-async-lens',
+      identifier: [{ value: 'slow-async-lens' }],
       meta: { profile: ['http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lens'] },
       extension: [{ url: 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version', valueString: '0.0.4' }],
       url: 'http://test.example/slow-async',
@@ -489,6 +498,89 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     expect(result.focusingErrors[0].length).toBeGreaterThan(0);
     expect(result.focusingErrors[0][0].message).toContain('timed out');
   }, 3000);
+
+  it('should report missing identifier before execution and continue with next lens', async () => {
+    const noIdentifierLensCode = `
+      return {
+        enhance: () => {
+          throw new Error('This should not execute without identifier');
+        }
+      };
+    `;
+
+    const noIdentifierLens = {
+      resourceType: 'Library',
+      id: 'no-identifier-lens',
+      name: 'NoIdentifierLens',
+      status: 'active',
+      type: { coding: [{ code: 'logical-library' }] },
+      content: [{ contentType: 'application/javascript', data: Buffer.from(noIdentifierLensCode).toString('base64') }]
+    };
+
+    const validLens = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '../test-data/lenses/sample-lens-1.json'), 'utf8')
+    );
+
+    const result = await applyLenses(sampleEpi, sampleIps, [noIdentifierLens, validLens]);
+
+    expect(result).toBeDefined();
+    expect(result.epi).toBeDefined();
+    expect(result.focusingErrors.length).toBe(2);
+
+    expect(result.focusingErrors[0].length).toBeGreaterThan(0);
+    expect(result.focusingErrors[0][0].lensName).toBe('Invalid-Identifier');
+    expect(result.focusingErrors[0][0].message).toContain('no valid identifier');
+
+    expect(result.focusingErrors[1].length).toBe(0);
+  });
+
+  it('should use the first identifier when a lens has multiple identifiers', async () => {
+    const multiIdentifierLensCode = `
+      return {
+        enhance: () => html,
+        explanation: () => 'Multi identifier lens explanation'
+      };
+    `;
+
+    const multiIdentifierLens = {
+      resourceType: 'Library',
+      id: 'multi-identifier-lens',
+      identifier: [
+        { value: 'first-identifier' },
+        { value: 'second-identifier' }
+      ],
+      name: 'MultiIdentifierLens',
+      status: 'active',
+      type: { coding: [{ code: 'logical-library' }] },
+      content: [{ contentType: 'application/javascript', data: Buffer.from(multiIdentifierLensCode).toString('base64') }]
+    };
+
+    const result = await applyLenses(sampleEpi, sampleIps, [multiIdentifierLens]);
+
+    expect(result).toBeDefined();
+    expect(result.focusingErrors.length).toBe(1);
+    expect(result.focusingErrors[0].length).toBe(0);
+
+    const compositionEntry = result.epi.entry.find((e: any) => e.resource?.resourceType === 'Composition');
+    const composition = compositionEntry?.resource;
+    const extensions = composition?.extension || [];
+    const lensesAppliedExtensions = extensions.filter((ext: any) =>
+      ext.url === 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/LensesApplied'
+    );
+
+    const lensesAppliedExtension = lensesAppliedExtensions.find((ext: any) => {
+      const explanation = ext.extension?.find((e: any) => e.url === 'explanation');
+      return explanation?.valueString === 'Multi identifier lens explanation';
+    });
+
+    expect(lensesAppliedExtension).toBeDefined();
+
+    const lensReference = lensesAppliedExtension.extension.find((e: any) => e.url === 'lens');
+    const elementClass = lensesAppliedExtension.extension.find((e: any) => e.url === 'elementClass');
+
+    expect(lensReference?.valueCodeableReference?.reference?.reference).toBe('Library/first-identifier');
+    expect(elementClass?.valueString).toBe('first-identifier');
+  });
 });
 
 describe('Configuration', () => {
@@ -687,6 +779,7 @@ return {
     
     const pvObservationLens = {
       resourceType: 'Library',
+      identifier: [{ value: 'pv-observation-reader-lens' }],
       url: 'http://test.example/pv-observation-reader',
       version: '1.0.0',
       name: 'PVObservationReaderLens',

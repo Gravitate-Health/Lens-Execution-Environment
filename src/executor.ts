@@ -60,7 +60,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
 
         try {
         
-        Logger.logInfo("executor.ts", "applyLenses", `Found the following lenses: ${completeLenses?.map(l => getLensIdenfier(l)).join(', ')}`);
+        Logger.logInfo("executor.ts", "applyLenses", `Found the following lenses: ${completeLenses?.map(l => getLensIdentifier(l)).join(', ')}`);
 
     // Get leaflet sectoins from ePI
     let leafletSectionList = getLeaflet(epi)
@@ -70,7 +70,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
     for (const i in completeLenses) {
         const lens = completeLenses[i]
         
-        const lensIdentifier = getLensIdenfier(completeLenses[i])
+        const lensIdentifier = getLensIdentifier(completeLenses[i])
         // const patientIdentifier = getPatientIdentifierFromPatientSummary(ips)
         
         const lensApplication = await applyLensToSections(lens, leafletSectionList, epi, ips, pv, effectiveConfig)
@@ -218,9 +218,22 @@ const executeLensInWorker = async (
 };
 
 const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: any, ips: any, pv: any, config: Required<LensExecutionConfig>) => {
-    const lensIdentifier = getLensIdenfier(lens) || "Invalid Lens Name"
+    const lensIdentifier = getLensIdentifier(lens)
     let lensCode = ""
     const focusingErrors: { message: string; lensName: string; }[] = []
+
+    if (!lensIdentifier) {
+        focusingErrors.push({
+            message: "Lens has no valid identifier (expected first identifier value at Library.identifier[0].value)",
+            lensName: "Invalid-Identifier"
+        })
+        return {
+            leafletSectionList: leafletSectionList,
+            explanation: "",
+            focusingErrors
+        }
+    }
+
     try {
         const lensBase64data = extractLensBase64Data(lens)
         if (!lensBase64data) {
@@ -481,12 +494,20 @@ const findResourceByType = (resource: any, resourceType: string): any => {
     return null;
 }
 
-const getLensIdenfier = (lens: any) => {
+const getLensIdentifier = (lens: any) => {
     try {
-        const lensIdentifier = lens["name"]
-        return lensIdentifier
+        if (!Array.isArray(lens?.identifier)) {
+            return null
+        }
+
+        const firstIdentifierValue = lens.identifier?.[0]?.value
+        if (typeof firstIdentifierValue !== 'string' || firstIdentifierValue.trim().length === 0) {
+            return null
+        }
+
+        return firstIdentifierValue
     } catch (error) {
-        Logger.logError("executor.ts", "getLensIdenfier", "Could not extract lens name (mandatory) from Library resource");
+        Logger.logError("executor.ts", "getLensIdentifier", "Could not extract lens identifier (mandatory) from Library resource");
     }
     return null;
 }
