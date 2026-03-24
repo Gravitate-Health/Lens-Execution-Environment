@@ -80,7 +80,7 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
             leafletSectionList = lensApplication.leafletSectionList
             const explanationText = lensApplication.explanation;
             let epiExtensions = []
-            if (explanationText != null && explanationText != undefined && explanationText != "") {
+            if (lensApplication.wasApplied) {
                 epiExtensions = getExtensions(epi)
                 epiExtensions.push({
                     "extension": [
@@ -230,7 +230,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         return {
             leafletSectionList: leafletSectionList,
             explanation: "",
-            focusingErrors
+            focusingErrors,
+            wasApplied: false
         }
     }
 
@@ -260,7 +261,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
         return {
             leafletSectionList: leafletSectionList,
             explanation: "",
-            focusingErrors
+            focusingErrors,
+            wasApplied: false
         }
     }
     try {
@@ -275,7 +277,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             return {
                 leafletSectionList: leafletSectionList,
                 explanation: "",
-                focusingErrors
+                focusingErrors,
+                wasApplied: false
             }
         }
         if (lensCode == undefined || lensCode == "") {
@@ -286,7 +289,8 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             return {
                 leafletSectionList: leafletSectionList,
                 explanation: "",
-                focusingErrors
+                focusingErrors,
+                wasApplied: false
             }
         }
         if (typeof lensCode !== 'string') {
@@ -297,12 +301,14 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             return {
                 leafletSectionList: leafletSectionList,
                 explanation: "",
-                focusingErrors
+                focusingErrors,
+                wasApplied: false
             }
         }
 
         const leafletHTMLString = getLeafletHTMLString(leafletSectionList)
         let explanation = ""
+        let wasApplied = false
         try {
             const lensLogSink = resolveLensLogSink(config, lensIdentifier)
             // Execute lens in isolated Worker Thread with timeout
@@ -323,6 +329,7 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             const diff = leafletHTMLString.localeCompare(enhancedHtml)
             if (diff != 0) {
                 Logger.logInfo("executor.ts", "applyLensToSections", `Lens ${lensIdentifier} applied to leaflet sections`)
+                wasApplied = true
             }
 
             // Parse enhanced HTML back to leaflet sections with validation
@@ -351,21 +358,24 @@ const applyLensToSections = async (lens: any, leafletSectionList: any[], epi: an
             return {
                 leafletSectionList: leafletSectionList,
                 explanation: "",
-                focusingErrors: focusingErrors
+                focusingErrors: focusingErrors,
+                wasApplied: false
             }
         }
 
         return {
             leafletSectionList: leafletSectionList,
             explanation: explanation || "" ,
-            focusingErrors: focusingErrors
+            focusingErrors: focusingErrors,
+            wasApplied: wasApplied
         }
     } catch (error: any) {
         Logger.logError("executor.ts", "applyLensToSections", `Unexpected error: ${JSON.stringify(error)}`);
         return {
             leafletSectionList: leafletSectionList,
             explanation: "",
-            focusingErrors: focusingErrors
+            focusingErrors: focusingErrors,
+            wasApplied: false
         }
     }
 }
