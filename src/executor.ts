@@ -79,9 +79,8 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
         if (lensApplied) {
             leafletSectionList = lensApplication.leafletSectionList
             const explanationText = lensApplication.explanation;
-            let epiExtensions = []
             if (lensApplication.wasApplied) {
-                epiExtensions = getExtensions(epi)
+                const epiExtensions = getExtensions(epi)
                 epiExtensions.push({
                     "extension": [
                         {
@@ -103,9 +102,8 @@ export const applyLenses = async (epi:any, ips: any, completeLenses: any[], pv?:
                     ],
                     "url": "http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/LensesApplied"
                 })
+                epi = setExtensions(epi, epiExtensions)
             }
-
-            epi = setExtensions(epi, epiExtensions)
         }
 
     }

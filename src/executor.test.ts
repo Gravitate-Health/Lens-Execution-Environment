@@ -583,6 +583,98 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
   });
 });
 
+describe('Lens Execution Environment - LensesApplied extension tracking', () => {
+  const sampleEpi = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/epis/sample-epi-1.json'), 'utf8')
+  );
+  const sampleIps = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../test-data/ips/sample-ips-1.json'), 'utf8')
+  );
+
+  const buildLens = (lensId: string, code: string) => ({
+    resourceType: 'Library',
+    identifier: [{ value: lensId }],
+    name: lensId,
+    status: 'active',
+    type: { coding: [{ code: 'logical-library' }] },
+    content: [{ contentType: 'application/javascript', data: Buffer.from(code).toString('base64') }]
+  });
+
+  const buildChangingLens = (lensId: string) => buildLens(
+    lensId,
+    `
+return {
+  enhance: () => html + '<!-- ${lensId} applied -->',
+  explanation: () => '${lensId} explanation'
+};
+    `
+  );
+
+  const buildNoChangeLens = (lensId: string) => buildLens(
+    lensId,
+    `
+return {
+  enhance: () => html,
+  explanation: () => '${lensId} no-op'
+};
+    `
+  );
+
+  const getAppliedLensIds = (epi: any): string[] => {
+    const composition = epi.entry?.find((e: any) => e.resource?.resourceType === 'Composition')?.resource;
+    const extensions = composition?.extension || [];
+    const appliedExtensions = extensions.filter(
+      (ext: any) => ext.url === 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/LensesApplied'
+    );
+
+    return appliedExtensions
+      .map((ext: any) => ext.extension?.find((item: any) => item.url === 'lens')?.valueCodeableReference?.reference?.reference)
+      .filter((reference: string | undefined) => typeof reference === 'string')
+      .map((reference: string) => reference.replace('Library/', ''));
+  };
+
+  it('should list all lenses in extension when all lenses make changes', async () => {
+    const lenses = [
+      buildChangingLens('change-lens-1'),
+      buildChangingLens('change-lens-2'),
+      buildChangingLens('change-lens-3')
+    ];
+
+    const result = await applyLenses(JSON.parse(JSON.stringify(sampleEpi)), sampleIps, lenses);
+
+    expect(result.focusingErrors.length).toBe(3);
+    result.focusingErrors.forEach((lensErrors: any[]) => expect(lensErrors.length).toBe(0));
+    expect(getAppliedLensIds(result.epi)).toEqual(['change-lens-1', 'change-lens-2', 'change-lens-3']);
+  });
+
+  it('should list only lenses that made changes when some lenses are no-op', async () => {
+    const lenses = [
+      buildChangingLens('change-lens-1'),
+      buildNoChangeLens('no-change-lens'),
+      buildChangingLens('change-lens-2')
+    ];
+
+    const result = await applyLenses(JSON.parse(JSON.stringify(sampleEpi)), sampleIps, lenses);
+
+    expect(result.focusingErrors.length).toBe(3);
+    result.focusingErrors.forEach((lensErrors: any[]) => expect(lensErrors.length).toBe(0));
+    expect(getAppliedLensIds(result.epi)).toEqual(['change-lens-1', 'change-lens-2']);
+  });
+
+  it('should not list any lenses in extension when no lenses make changes', async () => {
+    const lenses = [
+      buildNoChangeLens('no-change-lens-1'),
+      buildNoChangeLens('no-change-lens-2')
+    ];
+
+    const result = await applyLenses(JSON.parse(JSON.stringify(sampleEpi)), sampleIps, lenses);
+
+    expect(result.focusingErrors.length).toBe(2);
+    result.focusingErrors.forEach((lensErrors: any[]) => expect(lensErrors.length).toBe(0));
+    expect(getAppliedLensIds(result.epi)).toEqual([]);
+  });
+});
+
 describe('Configuration', () => {
   const sampleEpi = JSON.parse(
     fs.readFileSync(path.join(__dirname, '../test-data/epis/sample-epi-1.json'), 'utf8')
