@@ -537,7 +537,7 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
   it('should use the first identifier when a lens has multiple identifiers', async () => {
     const multiIdentifierLensCode = `
       return {
-        enhance: () => html,
+        enhance: () => html + '<!-- modified -->',
         explanation: () => 'Multi identifier lens explanation'
       };
     `;
