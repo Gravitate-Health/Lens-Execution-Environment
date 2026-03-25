@@ -1,0 +1,45 @@
+name: Build, Test and Publish NPM Package
+
+# Triggered only when a semver tag (vX.Y.Z) is pushed.
+# The tag becomes the published npm version.
+#
+# Prerequisites:
+#   - The org-level GitHub secret NPM_TOKEN must exist and be accessible to this repo.
+#     See the README for step-by-step setup instructions.
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'   # strict vX.Y.Z — no pre-release suffixes
+
+jobs:
+  publish:
+    uses: Gravitate-Health/reusable-workflows/.github/workflows/npm-publish.yml@main
+    secrets: inherit   # passes NPM_TOKEN (and any other org secrets) automatically
+    # permissions block is inherited from the reusable workflow (contents: read)
+    with:
+      # ── Node.js version ────────────────────────────────────────────────────
+      node_version: "20"          # change to "22" etc. as needed
+
+      # ── Test step ──────────────────────────────────────────────────────────
+      # Runs `npm run test` before building/publishing.
+      # Set to '' to skip (e.g. if tests are run in a separate CI workflow).
+      test_script: "test"
+
+      # ── Build step ─────────────────────────────────────────────────────────
+      # Runs `npm run build` to compile TypeScript / bundle assets.
+      # Set to '' for pure-JS packages that need no compilation.
+      build_script: "build"
+
+      # ── Publish settings ───────────────────────────────────────────────────
+      # 'public'     → suitable for all unscoped packages and public scoped ones (@org/pkg)
+      # 'restricted' → for private scoped packages (requires a paid npmjs plan)
+      access: "public"
+
+      # Sync package.json "version" field to match the pushed tag (recommended).
+      # Disable only if you manage versions manually and have already bumped package.json.
+      sync_version: true
+
+      # ── Registry ───────────────────────────────────────────────────────────
+      # Uncomment to publish to a private registry instead of npmjs.com
+      # registry_url: "https://npm.pkg.github.com"
