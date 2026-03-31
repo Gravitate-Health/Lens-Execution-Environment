@@ -581,6 +581,50 @@ describe('Lens Execution Environment - Malicious Lens Handling', () => {
     expect(lensReference?.valueCodeableReference?.reference?.reference).toBe('Library/first-identifier');
     expect(elementClass?.valueString).toBe('first-identifier');
   });
+
+  it('should preserve existing Composition extensions when a lens runs but does not change HTML (wasApplied=false)', async () => {
+    // Build an ePI with a pre-existing extension on the Composition (e.g. lee-version)
+    const epiWithExtension = JSON.parse(JSON.stringify(sampleEpi));
+    const compositionEntry = epiWithExtension.entry.find((e: any) => e.resource?.resourceType === 'Composition');
+    const existingExtension = { url: 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/lee-version', valueString: '1.4.0' };
+    compositionEntry.resource.extension = [existingExtension];
+
+    // A no-op lens: runs successfully but returns the HTML unchanged so wasApplied stays false
+    const noOpLensCode = `
+      return {
+        enhance: () => html,
+        explanation: () => 'no-op lens explanation'
+      };
+    `;
+    const noOpLens = {
+      resourceType: 'Library',
+      id: 'no-op-lens',
+      identifier: [{ value: 'no-op-lens' }],
+      name: 'NoOpLens',
+      status: 'active',
+      type: { coding: [{ code: 'logical-library' }] },
+      content: [{ contentType: 'application/javascript', data: Buffer.from(noOpLensCode).toString('base64') }]
+    };
+
+    const result = await applyLenses(epiWithExtension, sampleIps, [noOpLens]);
+
+    expect(result).toBeDefined();
+    expect(result.focusingErrors[0].length).toBe(0);
+
+    const resultCompositionEntry = result.epi.entry.find((e: any) => e.resource?.resourceType === 'Composition');
+    const resultExtensions = resultCompositionEntry?.resource?.extension || [];
+
+    // The pre-existing extension must still be present
+    const leeVersionExt = resultExtensions.find((ext: any) => ext.url === existingExtension.url);
+    expect(leeVersionExt).toBeDefined();
+    expect(leeVersionExt?.valueString).toBe('1.4.0');
+
+    // No LensesApplied extension should have been added (lens didn't change HTML)
+    const lensesAppliedExts = resultExtensions.filter((ext: any) =>
+      ext.url === 'http://hl7.eu/fhir/ig/gravitate-health/StructureDefinition/LensesApplied'
+    );
+    expect(lensesAppliedExts.length).toBe(0);
+  });
 });
 
 describe('Lens Execution Environment - LensesApplied extension tracking', () => {
